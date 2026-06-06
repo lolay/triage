@@ -1,0 +1,15 @@
+package cli
+
+// Flags holds all parsed command-line options for a triage run.
+type Flags struct {
+	Profile       string
+	JSON          bool
+	Quiet         bool
+	Strict        bool
+	Severity      bool // enables the 4-level exit-code ladder (0/1/2/3)
+	NoColor       bool
+	CommandLog    string // "" = disabled; path = stream probe output there each run
+	Verbose       bool
+	NoUpdateCheck bool
+	Migrate       bool
+}
