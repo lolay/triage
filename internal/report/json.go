@@ -15,13 +15,14 @@ type JSONReport struct {
 }
 
 // JSONResult represents one check outcome in the machine-readable report.
-// Shape per spec §7.3: group, name, severity, status, detail.
+// Shape per spec §7.3: group, name, severity, status, detail, command_log_path.
 type JSONResult struct {
-	Group    string `json:"group,omitempty"`
-	Name     string `json:"name"`
-	Severity string `json:"severity"`
-	Status   string `json:"status"` // "pass" | "fail" | "warn" | "info"
-	Detail   string `json:"detail,omitempty"`
+	Group          string `json:"group,omitempty"`
+	Name           string `json:"name"`
+	Severity       string `json:"severity"`
+	Status         string `json:"status"` // "pass" | "fail" | "warn" | "info"
+	Detail         string `json:"detail,omitempty"`
+	CommandLogPath string `json:"command_log_path,omitempty"`
 }
 
 // JSONSummary holds aggregate counts.
@@ -31,42 +32,49 @@ type JSONSummary struct {
 	Errors   int `json:"errors"`
 }
 
-// JSON writes the machine-readable report to w.
-func JSON(w io.Writer, results []engine.Result, profile string) error {
-	report := buildJSONReport(profile, results)
+// JSON writes the machine-readable report to w. commandLogPath is the path of
+// the active --command-log file (empty when not set); it is included in failing
+// results that have subprocess output so callers can inspect the full log.
+func JSON(w io.Writer, results []engine.Result, profile, commandLogPath string) error {
+	report := buildJSONReport(profile, commandLogPath, results)
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(report)
 }
 
-func buildJSONReport(profile string, results []engine.Result) JSONReport {
-	jr := JSONReport{
+func buildJSONReport(profile, commandLogPath string, results []engine.Result) JSONReport {
+	report := JSONReport{
 		Profile: profile,
 		Results: make([]JSONResult, 0, len(results)),
 	}
 	for _, r := range results {
-		jr.Results = append(jr.Results, JSONResult{
+		jr := JSONResult{
 			Group:    r.Group,
 			Name:     r.Label,
 			Severity: severityString(r.Severity),
 			Status:   statusString(r),
 			Detail:   r.Message,
-		})
+		}
+		// Enrich failing results that have subprocess output with the log path.
+		if !r.Pass && r.Output != "" && commandLogPath != "" {
+			jr.CommandLogPath = commandLogPath
+		}
+		report.Results = append(report.Results, jr)
 		if r.Kind == engine.KindHeader {
 			continue // don't count headers in the summary
 		}
 		if r.Pass {
-			jr.Summary.OK++
+			report.Summary.OK++
 		} else {
 			switch r.Severity {
 			case engine.SeverityError:
-				jr.Summary.Errors++
+				report.Summary.Errors++
 			case engine.SeverityWarn:
-				jr.Summary.Warnings++
+				report.Summary.Warnings++
 			}
 		}
 	}
-	return jr
+	return report
 }
 
 func statusString(r engine.Result) string {

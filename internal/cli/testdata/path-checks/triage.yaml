@@ -1,0 +1,7 @@
+default:
+  - path: present.txt
+    hint: touch present.txt
+  - path: "*.log"
+    hint: create a .log file in the project root
+  - path: absent.txt
+    hint: create absent.txt

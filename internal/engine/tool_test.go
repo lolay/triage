@@ -249,9 +249,10 @@ func TestRunner_GroupFailsWhenChildFails(t *testing.T) {
 }
 
 func TestRunner_InfoSkipForUnimplementedType(t *testing.T) {
+	// delegate is deferred to m5; it should still emit a non-failing info skip.
 	runner := NewRunnerWith(opts(nil, nil))
 	results := runner.Run(config.Profile{
-		{Type: config.TypeEnv, Value: "HOME"},
+		{Type: config.TypeDelegate, Value: "some-repo"},
 	})
 	if len(results) != 1 {
 		t.Fatalf("want 1 result, got %d", len(results))

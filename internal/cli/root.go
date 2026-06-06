@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -122,14 +123,32 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 		fmt.Fprintln(stderr, "triage: warning:", w)
 	}
 
-	// Select the active profile (check execution lands in m2 s2).
+	// Select the active profile.
 	profile := cfg.Profiles[f.Profile]
 	if profile == nil {
 		profile = config.Profile{}
 	}
 
-	// Run the check engine.
-	results := engine.NewRunner().Run(profile)
+	// Open --command-log if requested (nil = disabled).
+	var cmdLog *engine.CommandLog
+	if f.CommandLog != "" {
+		var logErr error
+		cmdLog, logErr = engine.OpenCommandLog(f.CommandLog)
+		if logErr != nil {
+			fmt.Fprintf(stderr, "triage: warning: --command-log: %v\n", logErr)
+		} else {
+			defer cmdLog.Close()
+		}
+	}
+
+	// Run the check engine with fully-wired options.
+	rOpts := engine.RunnerOpts{
+		BaseDir:    filepath.Dir(cfg.Path),
+		GOOS:       engine.CurrentPlatform(),
+		Profile:    f.Profile,
+		CommandLog: cmdLog,
+	}
+	results := engine.NewRunnerWith(rOpts).Run(profile)
 
 	// Render output.
 	opts := report.BoardOpts{
@@ -137,8 +156,14 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 		NoColor: f.NoColor,
 		Quiet:   f.Quiet,
 	}
+
+	logPath := ""
+	if cmdLog != nil {
+		logPath = cmdLog.Path()
+	}
+
 	if f.JSON {
-		if err := report.JSON(stdout, results, f.Profile); err != nil {
+		if err := report.JSON(stdout, results, f.Profile, logPath); err != nil {
 			fmt.Fprintf(stderr, "triage: json output: %v\n", err)
 			*exitCode = ExitUsageError
 			return nil
@@ -155,6 +180,15 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 			sink.End(results)
 		} else {
 			report.Board(stdout, results, opts)
+		}
+	}
+
+	// --verbose: replay bounded output for each failing check to stderr.
+	if f.Verbose {
+		for _, r := range results {
+			if !r.Pass && r.Output != "" {
+				fmt.Fprintf(stderr, "\n--- %s ---\n%s\n", r.Label, r.Output)
+			}
 		}
 	}
 

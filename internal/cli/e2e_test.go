@@ -18,9 +18,12 @@ var update = flag.Bool("update", false, "regenerate golden files")
 type e2eCase struct {
 	name     string
 	args     []string // extra args appended after the fixture dir path
-	binDir   string   // subdirectory under testdata/<name> to prepend to PATH; default "bin"
+	binDir   string   // subdir under testdata/<name> to prepend to PATH; default "bin"
 	wantExit int
-	noGolden bool // skip golden stdout comparison; just assert the exit code
+	noGolden bool              // skip golden stdout comparison; just assert the exit code
+	setEnv   map[string]string // env vars to set via t.Setenv before the run
+	unsetEnv []string          // env var names to ensure are absent for the run
+	goos     string            // sets TRIAGE_TEST_GOOS to pin platform for platform: guards
 }
 
 var e2eCases = []e2eCase{
@@ -55,6 +58,62 @@ var e2eCases = []e2eCase{
 		args:     []string{"--no-color"},
 		wantExit: 1,
 	},
+
+	// ── m3 fixtures ───────────────────────────────────────────────────────────
+
+	{
+		// env-checks: set/matches/unset/missing env vars.
+		// TRIAGE_SET_VAR and TRIAGE_MATCH_VAR are set; TRIAGE_UNSET_VAR is
+		// absent (unset: true → pass); TRIAGE_MISSING_VAR is absent (set mode
+		// → fail) → exit 1.
+		name:     "env-checks",
+		args:     []string{"--no-color"},
+		wantExit: 1,
+		setEnv: map[string]string{
+			"TRIAGE_SET_VAR":   "foo",
+			"TRIAGE_MATCH_VAR": "hello-world",
+		},
+		unsetEnv: []string{"TRIAGE_UNSET_VAR", "TRIAGE_MISSING_VAR"},
+	},
+	{
+		// path-checks: present file, glob match, and missing path → exit 1.
+		name:     "path-checks",
+		args:     []string{"--no-color"},
+		wantExit: 1,
+	},
+	{
+		// one-of: first case passes (fake-alpha found), second fails (both
+		// missing) → exit 1.
+		name:     "one-of",
+		args:     []string{"--no-color"},
+		wantExit: 1,
+	},
+	{
+		// platform-skip: pinned to linux; the macos group is omitted entirely.
+		// Only the linux tool (fake-linux-tool) appears → exit 0.
+		name:     "platform-skip",
+		args:     []string{"--no-color"},
+		wantExit: 0,
+		goos:     "linux",
+	},
+	{
+		// command-checks: echo pass, matches pass, exit-fail → exit 1.
+		name:     "command-checks",
+		args:     []string{"--no-color"},
+		wantExit: 1,
+	},
+	{
+		// realworld: composite with group/env/one_of/command/platform using fake
+		// bin scripts. Pinned to macos so the Xcode group runs.
+		name:     "realworld",
+		args:     []string{"--no-color"},
+		wantExit: 0,
+		goos:     "macos",
+		setEnv: map[string]string{
+			"TRIAGE_FAKE_TOKEN": "abc",
+			"TRIAGE_FAKE_KEY":   "secret",
+		},
+	},
 }
 
 // TestGolden runs each fixture through ExecuteWith in-process, captures stdout,
@@ -81,6 +140,23 @@ func TestGolden(t *testing.T) {
 			oldPath := os.Getenv("PATH")
 			if fi, err := os.Stat(fakeBin); err == nil && fi.IsDir() {
 				t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+oldPath)
+			}
+
+			// Apply per-case env overrides.
+			for k, v := range tc.setEnv {
+				t.Setenv(k, v)
+			}
+			for _, k := range tc.unsetEnv {
+				prev, existed := os.LookupEnv(k)
+				os.Unsetenv(k)
+				if existed {
+					t.Cleanup(func() { os.Setenv(k, prev) })
+				} else {
+					t.Cleanup(func() { os.Unsetenv(k) })
+				}
+			}
+			if tc.goos != "" {
+				t.Setenv("TRIAGE_TEST_GOOS", tc.goos)
 			}
 
 			var stdout, stderr bytes.Buffer

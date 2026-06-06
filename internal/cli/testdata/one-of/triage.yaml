@@ -1,0 +1,11 @@
+default:
+  - one_of:
+      - tool: fake-alpha
+      - tool: fake-beta
+    label: alpha or beta
+    hint: install fake-alpha or fake-beta
+  - one_of:
+      - tool: fake-missing-x
+      - tool: fake-missing-y
+    label: x or y
+    hint: install fake-missing-x or fake-missing-y

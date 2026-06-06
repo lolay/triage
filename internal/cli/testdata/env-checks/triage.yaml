@@ -1,0 +1,10 @@
+default:
+  - env: TRIAGE_SET_VAR
+    hint: export TRIAGE_SET_VAR=any
+  - env: TRIAGE_MATCH_VAR
+    matches: "^hello"
+    hint: export TRIAGE_MATCH_VAR=hello-world
+  - env: TRIAGE_UNSET_VAR
+    unset: true
+  - env: TRIAGE_MISSING_VAR
+    hint: export TRIAGE_MISSING_VAR=any

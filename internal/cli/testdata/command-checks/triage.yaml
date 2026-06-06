@@ -1,0 +1,12 @@
+default:
+  - command: echo hello world
+    label: echo pass
+  - command: "printf 'Xcode 26.0\\n'"
+    label: Xcode version check
+    matches: "Xcode 2[6-9]"
+  - command: "exit 1"
+    label: deliberate failure
+    hint: this command is expected to fail
+  - command: "printf 'Apple Distribution: Lolay (XYZ123)\\n'"
+    label: cert check
+    contains: "Apple Distribution"

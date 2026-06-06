@@ -4,13 +4,19 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
 	semver "github.com/Masterminds/semver/v3"
 )
+
+// captureCap is the maximum bytes captured from a subprocess's combined output
+// for assertion scanning and --verbose replay (spec §5, 256 KiB per check).
+const captureCap = 256 << 10
 
 // probeOverride holds a custom probe command and an optional version extractor
 // for tools that don't follow the conventional `<tool> --version` output.
@@ -59,6 +65,38 @@ type RunnerOpts struct {
 	// RunProbe executes a probe command and returns combined stdout+stderr;
 	// defaults to a real subprocess with a 10s timeout.
 	RunProbe func(ctx context.Context, name string, args []string) (string, error)
+
+	// GOOS is the OS for platform: guards ("macos"/"linux"/"windows").
+	// Empty defaults to CurrentPlatform() (runtime.GOOS, darwin→macos).
+	GOOS string
+	// LookupEnv looks up an environment variable; defaults to os.LookupEnv.
+	LookupEnv func(string) (string, bool)
+	// BaseDir is the base directory for resolving relative path/dir values.
+	// Defaults to the directory of the loaded config file.
+	BaseDir string
+	// RunCommand executes an explicitly-interpreted command snippet and returns
+	// bounded captured stdout, the exit code, and any exec error. Defaults to
+	// a real subprocess via the named interpreter with stream-to-discard I/O.
+	RunCommand func(ctx context.Context, interp, script, dir string) (stdout string, exitCode int, err error)
+	// CommandLog receives per-probe output blocks when --command-log is active.
+	CommandLog *CommandLog
+	// Profile is the active profile name, used for {{profile}} expansion.
+	Profile string
+}
+
+// CurrentPlatform returns the normalised runtime OS string: darwin → "macos";
+// all other GOOS values ("linux", "windows", …) are returned as-is.
+//
+// The env var TRIAGE_TEST_GOOS overrides the runtime value so tests can pin a
+// specific OS without forking a subprocess or recompiling.
+func CurrentPlatform() string {
+	if override := os.Getenv("TRIAGE_TEST_GOOS"); override != "" {
+		return override
+	}
+	if runtime.GOOS == "darwin" {
+		return "macos"
+	}
+	return runtime.GOOS
 }
 
 func defaultLookPath(name string) (string, error) {
@@ -69,6 +107,9 @@ func defaultRunProbe(_ context.Context, name string, args []string) (string, err
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	if len(out) > captureCap {
+		out = out[:captureCap]
+	}
 	return string(out), err
 }
 

@@ -1,0 +1,9 @@
+triage (profile: default)
+
+[✓] present.txt
+[✓] *.log
+[✗] absent.txt — absent.txt not found — create absent.txt
+
+✗ 1 error, 0 warnings, 2 ok — fix the [✗] items above
+To fix, run:
+    create absent.txt

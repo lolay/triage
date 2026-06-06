@@ -1,0 +1,11 @@
+triage (profile: default)
+
+[✓] Core tools
+    [✓] fake-brew
+    [✓] TRIAGE_FAKE_TOKEN
+[✓] Xcode
+    [✓] Xcode selected
+[✓] Secrets
+    [✓] key available
+
+✓ 4 ok

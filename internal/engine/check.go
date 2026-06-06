@@ -28,6 +28,11 @@ type Result struct {
 	Depth int        // nesting depth (0 = top level)
 	Group string     // legacy flat-section label (bare `group:` string field on leaf)
 	Kind  ResultKind // KindLeaf or KindHeader
+
+	// Output holds a bounded excerpt of the subprocess combined output (capped
+	// at captureCap bytes). Set on failure for --verbose replay and --json
+	// detail enrichment. Empty for instant checks (env, path, tool presence).
+	Output string
 }
 
 // Check is the interface every check type must implement.

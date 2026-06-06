@@ -1,0 +1,23 @@
+default:
+  - group: Core tools
+    items:
+      - tool: fake-brew
+        hint: install homebrew
+      - env: TRIAGE_FAKE_TOKEN
+        hint: export TRIAGE_FAKE_TOKEN=xyz
+
+  - group: Xcode
+    platform: [macos]
+    items:
+      - command: fake-xcode-probe
+        label: Xcode selected
+        contains: Xcode
+        hint: install Xcode
+
+  - group: Secrets
+    items:
+      - one_of:
+          - env: TRIAGE_FAKE_KEY
+          - path: .fake-key-file
+        label: key available
+        hint: set TRIAGE_FAKE_KEY or create .fake-key-file

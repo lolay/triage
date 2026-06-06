@@ -1,0 +1,8 @@
+triage (profile: default)
+
+[✓] alpha or beta
+[✗] x or y — x or y: none available — install fake-missing-x or fake-missing-y
+
+✗ 1 error, 0 warnings, 1 ok — fix the [✗] items above
+To fix, run:
+    install fake-missing-x or fake-missing-y

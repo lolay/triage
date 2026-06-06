@@ -1,0 +1,8 @@
+default:
+  - tool: fake-linux-tool
+    hint: install fake-linux-tool
+  - group: macOS only
+    platform: [macos]
+    items:
+      - tool: xcodebuild
+        hint: install Xcode from the App Store

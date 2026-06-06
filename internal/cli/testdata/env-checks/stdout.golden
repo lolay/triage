@@ -1,0 +1,10 @@
+triage (profile: default)
+
+[✓] TRIAGE_SET_VAR
+[✓] TRIAGE_MATCH_VAR
+[✓] TRIAGE_UNSET_VAR
+[✗] TRIAGE_MISSING_VAR — TRIAGE_MISSING_VAR not set — export TRIAGE_MISSING_VAR=any
+
+✗ 1 error, 0 warnings, 3 ok — fix the [✗] items above
+To fix, run:
+    export TRIAGE_MISSING_VAR=any
