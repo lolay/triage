@@ -17,13 +17,22 @@ type fakeCmd struct {
 
 // fakeRunCommand returns a RunCommand injection that maps "interp:script" → response.
 // Unrecognised keys return exit 0, empty output.
-func fakeRunCommand(table map[string]fakeCmd) func(context.Context, string, string, string) (string, int, error) {
-	return func(_ context.Context, interp, script, dir string) (string, int, error) {
+func fakeRunCommand(table map[string]fakeCmd) func(context.Context, string, string, string, map[string]string) (string, int, error) {
+	return func(_ context.Context, interp, script, dir string, env map[string]string) (string, int, error) {
 		key := interp + ":" + script
 		if v, ok := table[key]; ok {
 			return v.stdout, v.exitCode, nil
 		}
 		return "", 0, nil
+	}
+}
+
+// capturingRunCommand wraps fakeRunCommand and records the env map passed to each call.
+func capturingRunCommand(table map[string]fakeCmd, captured *map[string]string) func(context.Context, string, string, string, map[string]string) (string, int, error) {
+	base := fakeRunCommand(table)
+	return func(ctx context.Context, interp, script, dir string, env map[string]string) (string, int, error) {
+		*captured = env
+		return base(ctx, interp, script, dir, env)
 	}
 }
 
@@ -228,7 +237,7 @@ func TestCommand_InterpPwsh(t *testing.T) {
 func TestCommand_OverCapFail(t *testing.T) {
 	huge := strings.Repeat("x", captureCap) // exactly captureCap bytes
 	r := NewRunnerWith(RunnerOpts{
-		RunCommand: func(_ context.Context, _, _, _ string) (string, int, error) {
+		RunCommand: func(_ context.Context, _, _, _ string, _ map[string]string) (string, int, error) {
 			return huge, 0, nil
 		},
 	})
@@ -246,6 +255,141 @@ func TestCommand_OverCapFail(t *testing.T) {
 	}
 	if !strings.Contains(results[0].Message, "--command-log") {
 		t.Errorf("message should mention --command-log: %q", results[0].Message)
+	}
+}
+
+// ── with_env ──────────────────────────────────────────────────────────────────
+
+func TestCommand_WithEnv_Injected(t *testing.T) {
+	var got map[string]string
+	r := NewRunnerWith(RunnerOpts{
+		RunCommand: capturingRunCommand(map[string]fakeCmd{"sh:echo hi": {stdout: "hi\n", exitCode: 0}}, &got),
+	})
+	results := r.Run(config.Profile{{
+		Type:    config.TypeCommand,
+		Value:   "echo hi",
+		Label:   "greet",
+		WithEnv: map[string]string{"FOO": "bar"},
+	}})
+	if !results[0].Pass {
+		t.Errorf("want pass: %s", results[0].Message)
+	}
+	if got["FOO"] != "bar" {
+		t.Errorf("env FOO = %q, want bar", got["FOO"])
+	}
+}
+
+func TestCommand_WithEnv_ProfileExpansionInValue(t *testing.T) {
+	var got map[string]string
+	r := NewRunnerWith(RunnerOpts{
+		Profile:    "release",
+		RunCommand: capturingRunCommand(map[string]fakeCmd{"sh:cmd": {exitCode: 0}}, &got),
+	})
+	r.Run(config.Profile{{
+		Type:    config.TypeCommand,
+		Value:   "cmd",
+		Label:   "mode",
+		WithEnv: map[string]string{"MODE": "{{profile}}"},
+	}})
+	if got["MODE"] != "release" {
+		t.Errorf("MODE = %q, want release", got["MODE"])
+	}
+}
+
+func TestCommand_WithEnv_MultipleKeys(t *testing.T) {
+	var got map[string]string
+	r := NewRunnerWith(RunnerOpts{
+		RunCommand: capturingRunCommand(map[string]fakeCmd{"sh:cmd": {exitCode: 0}}, &got),
+	})
+	r.Run(config.Profile{{
+		Type:  config.TypeCommand,
+		Value: "cmd",
+		Label: "multi",
+		WithEnv: map[string]string{
+			"ALPHA": "1",
+			"BETA":  "2",
+		},
+	}})
+	if got["ALPHA"] != "1" || got["BETA"] != "2" {
+		t.Errorf("env = %#v, want ALPHA=1 BETA=2", got)
+	}
+}
+
+func TestCommand_WithEnv_CommandLogPrefix(t *testing.T) {
+	logPath := t.TempDir() + "/commands.log"
+	cl, _ := OpenCommandLog(logPath)
+	defer cl.Close()
+
+	r := NewRunnerWith(RunnerOpts{
+		CommandLog: cl,
+		RunCommand: fakeRunCommand(map[string]fakeCmd{"sh:echo hi": {stdout: "hi\n", exitCode: 0}}),
+	})
+	r.Run(config.Profile{{
+		Type:    config.TypeCommand,
+		Value:   "echo hi",
+		Label:   "greet",
+		WithEnv: map[string]string{"FOO": "bar"},
+	}})
+	cl.Close()
+
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("reading log: %v", err)
+	}
+	if !strings.Contains(string(content), "FOO=bar sh -c") {
+		t.Errorf("log should contain env prefix: %q", string(content))
+	}
+}
+
+func TestDefaultRunCommand_WithEnvOverridesInherited(t *testing.T) {
+	t.Setenv("TRIAGE_OVERRIDE_TEST", "inherited")
+	stdout, exitCode, err := defaultRunCommand(
+		context.Background(),
+		"sh",
+		`echo "$TRIAGE_OVERRIDE_TEST"`,
+		"",
+		map[string]string{"TRIAGE_OVERRIDE_TEST": "injected"},
+	)
+	if err != nil {
+		t.Fatalf("defaultRunCommand: %v", err)
+	}
+	if exitCode != 0 {
+		t.Fatalf("exit = %d, want 0", exitCode)
+	}
+	if strings.TrimSpace(stdout) != "injected" {
+		t.Errorf("stdout = %q, want injected", stdout)
+	}
+}
+
+func TestShellQuote(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"simple", "simple"},
+		{"with space", "'with space'"},
+		{"it's", `'it'\''s'`},
+		{"PATH=/usr/local/bin", "'PATH=/usr/local/bin'"},
+		{"plain123", "plain123"},
+		{"under_score", "under_score"},
+	}
+	for _, tc := range cases {
+		if got := shellQuote(tc.in); got != tc.want {
+			t.Errorf("shellQuote(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestMergeEnv_LastKeyWins(t *testing.T) {
+	got := mergeEnv([]string{"FOO=old"}, map[string]string{"FOO": "new"})
+	found := false
+	for _, e := range got {
+		if e == "FOO=new" {
+			found = true
+		}
+		if e == "FOO=old" && found {
+			t.Error("FOO=new should appear after FOO=old so override wins")
+		}
+	}
+	if !found {
+		t.Errorf("mergeEnv missing FOO=new: %v", got)
 	}
 }
 

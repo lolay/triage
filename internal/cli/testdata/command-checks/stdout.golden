@@ -4,7 +4,8 @@ triage (profile: default)
 [✓] Xcode version check
 [✗] deliberate failure — deliberate failure: exit 1 (want 0) — this command is expected to fail
 [✓] cert check
+[✓] with_env echo
 
-✗ 1 error, 0 warnings, 3 ok — fix the [✗] items above
+✗ 1 error, 0 warnings, 4 ok — fix the [✗] items above
 To fix, run:
     this command is expected to fail

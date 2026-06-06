@@ -73,6 +73,7 @@ type Check struct {
 	Contains string
 	Exit     *int
 	Interp   string
+	WithEnv  map[string]string // per-command env injection (layered over inherited env)
 
 	// delegate fields.
 	Config string // child config path (defaults to triage.yaml under Dir)
@@ -127,9 +128,10 @@ type checkFields struct {
 	Unset   bool   `yaml:"unset"`
 	Matches string `yaml:"matches"`
 
-	Contains string `yaml:"contains"`
-	Exit     *int   `yaml:"exit"`
-	Interp   string `yaml:"interp"`
+	Contains string            `yaml:"contains"`
+	Exit     *int              `yaml:"exit"`
+	Interp   string            `yaml:"interp"`
+	WithEnv  map[string]string `yaml:"with_env"`
 
 	Config string `yaml:"config"`
 }
@@ -203,6 +205,7 @@ func (c *Check) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	c.Contains = f.Contains
 	c.Exit = f.Exit
 	c.Interp = f.Interp
+	c.WithEnv = f.WithEnv
 	c.Config = f.Config
 	c.Items = f.Items
 	for _, e := range f.OneOf {

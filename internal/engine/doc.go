@@ -4,8 +4,9 @@
 //   - env: presence check (optional matches regex; unset mode).
 //   - path: glob + ~ expansion, resolved against opts.BaseDir / c.Dir.
 //   - one_of: evaluates alternatives silently; emits one atomic leaf result.
-//   - command: explicit interpreter (-c), {{profile}} expansion, bounded
-//     stdout capture (captureCap = 256 KiB), exit / contains / matches
+//   - command: explicit interpreter (-c), {{profile}} expansion, optional
+//     with_env map (layered over inherited env; values support {{profile}}),
+//     bounded stdout capture (captureCap = 256 KiB), exit / contains / matches
 //     assertions, and optional CommandLog streaming.
 //   - platform: guards on any check/group; non-matching checks are omitted
 //     entirely (no board line, no summary count).

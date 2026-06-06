@@ -291,6 +291,9 @@ func (l *loader) postProcessCheck(c *Check, dir, file string) {
 	if c.Unset && c.Matches != "" {
 		l.warnf("%s: env %q: 'unset: true' with 'matches' is contradictory; 'matches' ignored", file, c.Value)
 	}
+	if len(c.WithEnv) > 0 && c.Type != TypeCommand {
+		l.warnf("%s: %s %q: 'with_env' is only used by command checks; ignored", file, c.Type, c.Value)
+	}
 
 	switch {
 	case c.Version != "":

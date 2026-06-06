@@ -10,3 +10,8 @@ default:
   - command: "printf 'Apple Distribution: Lolay (XYZ123)\\n'"
     label: cert check
     contains: "Apple Distribution"
+  - command: 'echo "$TRIAGE_WITH_ENV_TEST"'
+    label: with_env echo
+    with_env:
+      TRIAGE_WITH_ENV_TEST: injected-value
+    contains: injected-value

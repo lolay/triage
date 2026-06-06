@@ -271,7 +271,21 @@ defaults to **exit 0**, or set `contains:` / `matches:` (stdout) / `exit:`
 `{{profile}}` in the command string expands to the active profile name. Optional
 **`dir:`** sets the working directory before the command runs — the right way to
 invoke a member repo's `make doctor` (or any other script) without treating it as
-a triage delegate. This also covers **auth/session validity** — run the CLI's
+a triage delegate. Optional **`with_env:`** injects a map of environment
+variables for that command only: pairs are layered over the inherited process
+environment (later keys override inherited values of the same name). Values support
+`{{profile}}` expansion; triage does not perform `$VAR` interpolation — the shell
+still does that inside the snippet. Example:
+
+```yaml
+- command: terraform validate
+  label: terraform config valid
+  with_env:
+    TF_IN_AUTOMATION: "1"
+    MODE: "{{profile}}"
+```
+
+This also covers **auth/session validity** — run the CLI's
 own auth probe and let exit 0 mean "logged in and not expired" (e.g.
 `gcloud auth print-access-token`, `firebase login:list` + `contains: "@"`).
 - **Command subprocess I/O** — `command` checks and `tool` version probes spawn

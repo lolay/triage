@@ -156,6 +156,11 @@
           "type": "string",
           "enum": ["sh", "pwsh"]
         },
+        "with_env": {
+          "description": "Environment variables to set for a command check (layered over the inherited environment; values support {{profile}}).",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
         "label": {
           "description": "Friendly name. Required for command checks; identity key for command/one_of.",
           "type": "string"

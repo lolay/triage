@@ -77,7 +77,7 @@ type RunnerOpts struct {
 	// RunCommand executes an explicitly-interpreted command snippet and returns
 	// bounded captured stdout, the exit code, and any exec error. Defaults to
 	// a real subprocess via the named interpreter with stream-to-discard I/O.
-	RunCommand func(ctx context.Context, interp, script, dir string) (stdout string, exitCode int, err error)
+	RunCommand func(ctx context.Context, interp, script, dir string, env map[string]string) (stdout string, exitCode int, err error)
 	// CommandLog receives per-probe output blocks when --command-log is active.
 	CommandLog *CommandLog
 	// Profile is the active profile name, used for {{profile}} expansion.
