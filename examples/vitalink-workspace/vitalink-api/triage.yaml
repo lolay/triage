@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../../schema/triage.schema.json
+# vitalink-api member — path-only checks so the workspace example runs anywhere.
+
+default:
+  - path: service.ok
+    label: api service ready
+    group: Service

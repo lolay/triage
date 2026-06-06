@@ -1,0 +1,13 @@
+triage (profile: default)
+
+[✓] api
+    [✓] Toolchain
+        [✓] fake-go 1.26.3 (>=1.21)
+    [✓] nested
+        [✓] fake-git
+[✗] infra
+    [✗] fake-terraform — fake-terraform 1.14.2 — need >=99.0 — upgrade terraform
+
+✗ 1 error, 0 warnings, 2 ok — fix the [✗] items above
+To fix, run:
+    upgrade terraform

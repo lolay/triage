@@ -1,0 +1,8 @@
+default:
+  - group: Toolchain
+    items:
+      - tool: fake-go
+        version: ">=1.21"
+        hint: https://go.dev/dl
+  - delegate: nested
+    dir: ../nested

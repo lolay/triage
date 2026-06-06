@@ -1,0 +1,3 @@
+default:
+  - delegate: child
+    dir: child

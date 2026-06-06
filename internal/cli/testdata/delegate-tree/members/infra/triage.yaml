@@ -1,0 +1,4 @@
+default:
+  - tool: fake-terraform
+    version: ">=99.0"
+    hint: upgrade terraform

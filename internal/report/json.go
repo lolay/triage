@@ -15,10 +15,13 @@ type JSONReport struct {
 }
 
 // JSONResult represents one check outcome in the machine-readable report.
-// Shape per spec §7.3: group, name, severity, status, detail, command_log_path.
+// Shape per spec §7.3: group, name, severity, status, detail, command_log_path,
+// plus depth/kind so consumers can reconstruct the delegate tree deterministically.
 type JSONResult struct {
 	Group          string `json:"group,omitempty"`
 	Name           string `json:"name"`
+	Kind           string `json:"kind"` // "check" | "group" | "delegate"
+	Depth          int    `json:"depth"`
 	Severity       string `json:"severity"`
 	Status         string `json:"status"` // "pass" | "fail" | "warn" | "info"
 	Detail         string `json:"detail,omitempty"`
@@ -51,6 +54,8 @@ func buildJSONReport(profile, commandLogPath string, results []engine.Result) JS
 		jr := JSONResult{
 			Group:    r.Group,
 			Name:     r.Label,
+			Kind:     jsonKind(r),
+			Depth:    r.Depth,
 			Severity: severityString(r.Severity),
 			Status:   statusString(r),
 			Detail:   r.Message,
@@ -60,8 +65,8 @@ func buildJSONReport(profile, commandLogPath string, results []engine.Result) JS
 			jr.CommandLogPath = commandLogPath
 		}
 		report.Results = append(report.Results, jr)
-		if r.Kind == engine.KindHeader {
-			continue // don't count headers in the summary
+		if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
+			continue // aggregate lines; children are counted
 		}
 		if r.Pass {
 			report.Summary.OK++
@@ -91,6 +96,17 @@ func statusString(r engine.Result) string {
 		return "info"
 	default:
 		return "fail"
+	}
+}
+
+func jsonKind(r engine.Result) string {
+	switch r.Kind {
+	case engine.KindHeader:
+		return "group"
+	case engine.KindDelegate:
+		return "delegate"
+	default:
+		return "check"
 	}
 }
 

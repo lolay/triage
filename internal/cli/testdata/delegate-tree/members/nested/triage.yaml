@@ -1,0 +1,3 @@
+default:
+  - tool: fake-git
+    hint: https://git-scm.com

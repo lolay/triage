@@ -89,7 +89,7 @@ func (s *TTYSink) Emit(r engine.Result) {
 	//
 	// This is still TTY-aware: the difference from StaticSink is that we print
 	// each line as it arrives (streaming) rather than buffering all results.
-	if r.Kind == engine.KindHeader {
+	if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
 		indent := strings.Repeat("    ", r.Depth)
 		glyph := glyphFor(r, s.opts)
 		fmt.Fprintf(s.w, "%s%s %s\n", indent, glyph, r.Label)
@@ -122,7 +122,7 @@ func (s *TTYSink) End(results []engine.Result) {
 func printSummary(w io.Writer, results []engine.Result, opts BoardOpts) {
 	var ok, warns, errs int
 	for _, r := range results {
-		if r.Kind == engine.KindHeader {
+		if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
 			continue
 		}
 		if r.Pass {

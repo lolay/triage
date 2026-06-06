@@ -4,7 +4,7 @@ These configs are **fictional** — two made-up medical companies, **Vitalink**
 (a multi-repo health platform) and **Otoscope** (a standalone macOS app). They
 reference no real project; they exist to demonstrate every feature in
 [specs/product.md](../specs/product.md) and double as the acceptance set for the
-milestone acceptance fixtures (m3 check types, m5 delegation; m6 action dogfoods here).
+milestone acceptance fixtures (m3 check types, m4 delegation; m6 action dogfoods here).
 
 ## Running an example
 
@@ -14,6 +14,8 @@ From this repo:
 ```sh
 triage examples/vitalink-api.yaml
 triage examples/otoscope-mac.yaml --profile release
+triage examples/vitalink-workspace.yaml
+triage examples/vitalink-workspace --no-color
 ```
 
 Or `cd` into a directory that contains a config and run `triage` with no args.
@@ -31,7 +33,7 @@ check is still valid (output-only shorthand) — see `vitalink-api.yaml`.
 | [`vitalink-web.yaml`](vitalink-web.yaml) | Node/pnpm app | `version_from` (`.nvmrc`), `one_of` (pnpm/npm), `severity: warn`, **firebase + gcloud auth/session** |
 | [`vitalink-infra.yaml`](vitalink-infra.yaml) | Terraform | `version_from` (`.terraform-version`), empty release profile |
 | [`otoscope-mac.yaml`](otoscope-mac.yaml) | macOS Swift app | structural **`group`+`items:`**, `command`+`platform`, `path`, heterogeneous `one_of`, keychain/xcrun/Xcode, `warn` |
-| [`vitalink-workspace.yaml`](vitalink-workspace.yaml) | estate root | `delegate` check + `command`/`dir:` in one ordered list |
+| [`vitalink-workspace.yaml`](vitalink-workspace.yaml) / [`vitalink-workspace/`](vitalink-workspace/) | estate root | `delegate` checks (nested tree output) + legacy `group:` shorthand; runnable with path-only member checks |
 | [`../triage.yaml`](../triage.yaml) | **this repo** (dogfood) | `tool`, `version_from`, `extends`, `severity: warn` |
 
 ## Auth / session checks
@@ -61,6 +63,7 @@ assert exit 0:
 
 ## Caveat
 
-triage isn't built yet, so these are not runnable today — they are the spec made
-concrete. When the m2 loader lands, `triage examples/<file>` is the first
-acceptance test.
+Most single-file examples assume real tools (`go`, `terraform`, Xcode, …) are
+installed — they demonstrate config shape, not guaranteed green boards.
+[`vitalink-workspace`](vitalink-workspace/) is self-contained (path checks only)
+and should pass on any machine.

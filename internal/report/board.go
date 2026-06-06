@@ -41,7 +41,7 @@ func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
 	for i := range results {
 		r := results[i]
 
-		if r.Kind == engine.KindHeader {
+		if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
 			indent := strings.Repeat("    ", r.Depth)
 			glyph := glyphFor(r, opts)
 			fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Label)
@@ -52,7 +52,8 @@ func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
 		// Legacy flat-section: emit a synthetic header on first appearance.
 		if r.Group != "" && r.Group != lastLegacyGroup {
 			glyph := worstGlyphForGroup(r.Group, results, opts)
-			fmt.Fprintf(w, "%s %s\n", glyph, r.Group)
+			indent := strings.Repeat("    ", r.Depth)
+			fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Group)
 			lastLegacyGroup = r.Group
 		}
 
@@ -79,7 +80,7 @@ func printRemediation(w io.Writer, results []engine.Result, opts BoardOpts) {
 	var hints []string
 	seen := map[string]bool{}
 	for _, r := range results {
-		if r.Kind == engine.KindHeader {
+		if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
 			continue
 		}
 		if r.Pass || r.Severity == engine.SeverityInfo {
@@ -134,7 +135,7 @@ func glyphFor(r engine.Result, opts BoardOpts) string {
 func worstGlyphForGroup(group string, results []engine.Result, opts BoardOpts) string {
 	worst := engine.Result{Pass: true, Severity: engine.SeverityInfo, Kind: engine.KindLeaf}
 	for _, r := range results {
-		if r.Kind == engine.KindHeader || r.Group != group {
+		if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate || r.Group != group {
 			continue
 		}
 		if !r.Pass && worst.Pass {

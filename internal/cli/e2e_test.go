@@ -121,6 +121,22 @@ var e2eCases = []e2eCase{
 		args:     []string{"--no-color"},
 		wantExit: 1,
 	},
+
+	// ── m4 fixtures ───────────────────────────────────────────────────────────
+
+	{
+		// delegate-tree: nested delegates with groups, one failing leaf.
+		name:     "delegate-tree",
+		args:     []string{"--no-color"},
+		wantExit: 1,
+	},
+	{
+		// delegate-cycle: A→B→A re-enters a config on the ancestor chain → exit 3.
+		name:     "delegate-cycle",
+		args:     []string{"--no-color"},
+		wantExit: 3,
+		noGolden: true,
+	},
 }
 
 // TestGolden runs each fixture through ExecuteWith in-process, captures stdout,

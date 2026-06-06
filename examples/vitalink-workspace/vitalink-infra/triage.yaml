@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../../schema/triage.schema.json
+# vitalink-infra member — path-only checks so the workspace example runs anywhere.
+
+default:
+  - path: infra.ok
+    label: infra stack ready
+    group: Toolchain

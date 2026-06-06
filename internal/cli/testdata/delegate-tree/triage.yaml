@@ -1,0 +1,5 @@
+default:
+  - delegate: api
+    dir: members/api
+  - delegate: infra
+    dir: members/infra

@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../schema/triage.schema.json
+# vitalink-workspace — runnable estate root (fictional). Spec §5:
+# delegate is a check type — peers in the profile list, run in order.
+
+default:
+  - path: workspace.ok
+    label: workspace ready
+    group: Workspace
+  - delegate: vitalink-api
+    dir: vitalink-api
+  - delegate: vitalink-infra
+    dir: vitalink-infra

@@ -1,16 +1,15 @@
 # yaml-language-server: $schema=../schema/triage.schema.json
 # vitalink-workspace — the estate root (fictional). Spec §5:
 # delegate is a check type — peers in the profile list, run in order.
+#
+# Runnable from this repo: triage examples/vitalink-workspace.yaml
+# (or cd examples/vitalink-workspace && triage)
 
 default:
-  - tool: make
+  - path: vitalink-workspace/workspace.ok
+    label: workspace ready
     group: Workspace
-    hint: xcode-select --install
-  - command: make doctor MODE={{profile}}
-    label: vitalink-web
-    dir: vitalink-web
-    group: Members
   - delegate: vitalink-api
-    dir: vitalink-api
+    config: vitalink-workspace/vitalink-api/triage.yaml
   - delegate: vitalink-infra
-    dir: vitalink-infra
+    config: vitalink-workspace/vitalink-infra/triage.yaml
