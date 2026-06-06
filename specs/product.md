@@ -177,8 +177,10 @@ Other keys:
 - **Type-as-key.** Each check's *type key* (`tool:`/`env:`/`path:`/`one_of:`/
 `command:`/`delegate:`) carries its primary value; `severity`, `group`,
 `platform`, `hint` are optional fields on any check (see §5, §7.1). All checks
-in a profile's check list run **in order** — delegates are peers, not a separate
-phase.
+in a profile's check list are **ordered** — delegates are peers, not a separate
+phase. That order is the **render order**: the engine may execute checks
+concurrently (bounded worker pool, §7.2) but always *materializes* results in
+list order, so output never depends on timing.
 - **Profiles at the root — no `profiles:` wrapper.** Root is always a **mapping**.
 Checks never sit at the top level — only under profile keys. Parsing rule:
   1. **`include`** — reserved. Composes other files (processed first, in order).
@@ -293,7 +295,8 @@ These absorb today's bespoke bash declaratively. All are read-only.
 
 **Field reference (optional fields on any check):** `severity` (§7.1), `platform`
 (`macos`/`linux`/`windows`), `hint`, `fix` (m7), `dir` (working directory — see
-below). Legacy **`group:` string field** on a check (output-only shorthand) is
+below), `serial` (opt out of concurrency for this check or group — §7.2). Legacy
+**`group:` string field** on a check (output-only shorthand) is
 still accepted; prefer a structural **`group`** container when nesting.
 Type-specific:
 
@@ -336,6 +339,14 @@ own auth probe and let exit 0 mean "logged in and not expired" (e.g.
     raw output. Path defaults to `.triage/commands.log` when the flag is given
     without a value. Parent dirs are created as needed. **Off by default** —
     omit the flag for normal use.
+  - **Under concurrency (`--jobs > 1`, §7.2):** "stream-through" means
+    **per-probe spool, then ordered concatenation** — never one shared file with
+    many writers. Each running probe streams its combined output to its **own**
+    spool as bytes arrive (no cross-probe interleaving, no in-memory buffering),
+    and when the probe finalizes, its block is appended to the log **in config
+    list order** (early finishers wait their turn; the spool is then discarded).
+    The on-disk format is unchanged — one coherent `label`/`cwd`/`run:`/`---`
+    /output block per probe — and the log is still truncated once at run start.
   - **Assertions:** `contains:` / `matches:` scan a **bounded prefix** of
     captured stdout (default cap **256 KiB** per check). Beyond the cap, the
     check fails with a message to re-run with `--command-log` (or use shell
@@ -344,7 +355,9 @@ own auth probe and let exit 0 mean "logged in and not expired" (e.g.
   - **On failure:** board may show a **one-line excerpt**; `--json` `detail`
     carries excerpt + `command_log` path when `--command-log` was set.
   - **`--verbose`:** on failure, replay the matching log block (or captured
-    excerpt) to **stderr** so it does not fight the board on stdout.
+    excerpt) to **stderr** so it does not fight the board on stdout. Under
+    concurrency, replays follow the same list-order, one-block-at-a-time
+    discipline so blocks never interleave.
   - **Author escape hatch (POSIX):** redirect inside the `command:` string when
     a named artifact is wanted regardless of triage flags — triage still sees
     whatever the shell leaves on stdout/stderr after redirection:
@@ -415,8 +428,10 @@ sub-checks (`one_of: [{env: SOPS_AGE_KEY}, {path: ~/.config/sops/age/keys.txt}]`
   `triage.yaml` under `dir:`. Loads and runs the child in-process; active
   `--profile` is forwarded. One pass/fail for the whole child subtree; human
   output uses the **delegate tree** (§7.2). Child configs may include their own
-  `delegate` checks (same rules, depth-first in list order). No auto-discovery;
-  cycles (A→B→A) → config error (exit `3`). No dedup across levels.
+  `delegate` checks (same rules, nested arbitrarily deep). Sibling delegates
+  **execute concurrently** with each other and with local checks (§7.2) and are
+  **rendered** depth-first in list order. No auto-discovery; cycles (A→B→A) →
+  config error (exit `3`). No dedup across levels.
 
 ```yaml
 default:
@@ -501,11 +516,46 @@ To fix, run:
 The trailing **remediation summary** (read-only) aggregates the hints into a
 copy-paste block — it *prints* commands, never runs them (see 7.4).
 
+#### Concurrency (bounded worker pool)
+
+Checks are **read-only** (§2, §7), so they have no inter-check data dependencies
+and are safe to run in any order or simultaneously. The engine runs them through
+a **bounded worker pool** (default size ≈ `runtime.NumCPU()`, capped; overridable
+with `--jobs <n>` / `-j`). `--jobs 1` forces fully sequential execution.
+
+**Core rule — execute concurrently, materialize in list order.** Concurrency is
+a scheduling detail only; it never changes what the user sees. A check that
+finishes early does **not** render early — its final board line *and* its
+`--command-log` block (§5) are materialized in config **list order**. This keeps
+human output and golden fixtures byte-stable regardless of `--jobs` or subprocess
+timing.
+
+- **Automatic, not declared.** There is **no `async:` / `parallel:` YAML knob** —
+  parallelism is the default because read-only makes it always safe. Authors opt
+  *out*, never in.
+- **`serial: true`** (optional field on any check or `group`) — pin this check
+  (or every direct child of this group) to run sequentially, after prior work,
+  for the rare case of a **shared scarce resource** (exclusive lock,
+  rate-limited/flaky auth endpoint, keychain) or a `command` escape hatch with a
+  side effect another check observes. Default is parallel; reach for `serial`
+  only on real contention.
+- **Delegates** are the natural coarse-grained unit — sibling `delegate` checks
+  (and their subtrees) run concurrently with each other and with local checks;
+  each child config runs its own pool internally.
+- **`group` stays display-only.** Grouping is for the board, not a concurrency
+  boundary — putting checks in a group must not silently change how they
+  schedule. Set `serial:` on the group when you genuinely want its children
+  serialized.
+
 #### In-flight progress (pending checks)
 
-Checks run **in list order**. The board should show **what is running** without
-streaming raw subprocess output (§5) and without a full-screen TUI — line-at-a-time
-updates only (pre-commit / `flutter doctor` style, not Bubble Tea).
+Checks are **rendered in list order** (execution may be concurrent — see
+*Concurrency* above): a finished check waits its turn to reveal/finalize, so the
+board is a single coherent top-down stream rather than many flickering live
+lines. The board should show **what is running** without streaming raw
+subprocess output (§5) and without a full-screen TUI — line-at-a-time updates
+only (pre-commit / `flutter doctor` style, not Bubble Tea). (A multi-line live
+region — several `[…]` active at once — is optional polish, later.)
 
 **Instant checks** — `env`, `path`, bare `tool` presence (no version probe), and
 checks skipped by `platform:` — print the **final** `[✓]`/`[✗]`/`[!]` line only
@@ -647,6 +697,7 @@ is the important part.
 | `--quiet`                                | Suppress `[✓]` passes; show only `[!]`/`[✗]` + summary                                    |
 | `--strict`                               | Treat `warn` as `error` (warnings fail the run)                                           |
 | `--severity`                             | Severity-graded exit ladder — `0`/`1`/`2`/`3` so callers can branch on warnings vs errors |
+| `--jobs <n>` / `-j`                      | Max concurrent checks (bounded worker pool; default ≈ NumCPU). `--jobs 1` = fully sequential (§7.2) |
 | `--no-color`                             | Disable color (auto when stdout is not a TTY)                                             |
 | `--command-log` `[path]`                 | Stream each probe's output to a log file (default `.triage/commands.log`); **truncated each run**; off by default |
 | `--verbose`                              | On check failure, replay command output (or log excerpt) to **stderr**                  |
@@ -730,7 +781,7 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 
 - s1 — [deep] `triage.yaml` schema + loader (`goccy/go-yaml`): mapping root, top-level profile keys (no `profiles:` wrapper; no bare checks at root), `include`, optional empty `default`, `extends`/`add`, `version_from`, type-as-key checks; publish a JSON Schema for editors
 - s2 — [exec] `tool` check: presence via `exec.LookPath`, version extraction (incl. `go version`-style overrides), `version` (npm-style ranges) + `version_from` via `Masterminds/semver`
-- s3 — [exec] Severity model (`error`/`warn`/`info` + `required` sugar, `--strict`); grouped output (`group` containers + remediation summary); pending `[…]` + TTY back-update for slow checks (§7.2)
+- s3 — [exec] Severity model (`error`/`warn`/`info` + `required` sugar, `--strict`); grouped output (`group` containers + remediation summary); pending `[…]` + TTY back-update for slow checks (§7.2). Renderer **materializes results in list order, independent of execution order** (finalize-in-order) so it's ready for concurrency (§7.2) with no rewrite
 
 ### m3 — Full check types
 
@@ -743,6 +794,7 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 - s1 — [deep] `delegate` check type + recursive nesting (checks list order, pass/fail per child)
 - s2 — [exec] Delegate tree renderer: nested board under pending summary line, stream child lines as they complete (extends §7.2 pending renderer)
 - s3 — [exec] `triage-<name>` PATH-plugin discovery + contract; golden fixtures for `examples/` workspace/delegate shapes
+- s4 — [deep] Bounded worker pool + `--jobs`/`-j` (default ≈ NumCPU, `1` = sequential): run local checks **and** sibling delegates concurrently; `serial:` opt-out on check/group; render and `--command-log` materialize in **list order** (per-probe spool → ordered concat) so golden output is timing-independent (§5, §7.2). Highest payoff here because delegate-heavy workspaces dominate runtime
 
 ### m5 — Release & distribution
 
@@ -943,6 +995,14 @@ config; `--strict` escalates warn→error (§7.3).
 - **Output:** grouped board; in-flight `[…]` pending lines + TTY back-update for
 slow checks; delegate nested tree (§7.2); cached update banner (§7.2);
 `--json`/`--quiet`/`--no-color`/`--no-update-check` (§7); `--only` deferred (m7).
+- **Concurrency:** checks run through a **bounded worker pool** (`--jobs`/`-j`,
+default ≈ NumCPU; `1` = sequential). **Execute concurrently, materialize in list
+order** so board + `--command-log` output (and golden fixtures) are
+timing-independent. No `async:`/`parallel:` YAML knob — parallel by default
+(read-only ⇒ safe); opt out with `serial:` on a check/group. `group` stays
+display-only (not a scheduling boundary). `--command-log` spools per-probe then
+concatenates in list order. Implementation lands m4 s4; renderer is built
+finalize-in-order from m2 s3 (§5, §7.2, §9).
 - **Command I/O:** subprocess output stream-to-discard by default (no log file);
 `--command-log` opt-in stream-through tee (**overwrite log each run**); bounded
 assertion scan; POSIX redirect in `command:` as author escape hatch (§5).
