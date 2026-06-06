@@ -82,9 +82,18 @@ type RunnerOpts struct {
 	CommandLog *CommandLog
 	// Profile is the active profile name, used for {{profile}} expansion.
 	Profile string
-	// Vars holds config/CLI template variables (built-ins profile/os are injected
-	// at runtime and override any user-defined values of the same name).
-	Vars map[string]string
+	// ConfigVars holds the per-config vars: block. A delegated child uses its
+	// own ConfigVars (never the parent's), so config vars don't leak across a
+	// delegate boundary.
+	ConfigVars map[string]string
+	// CLIVars holds global --var overrides; they apply to every config in the
+	// delegate tree and win over ConfigVars. Built-ins (profile/os) are injected
+	// at runtime and win over both.
+	CLIVars map[string]string
+	// ConfigPath is the absolute path of the entry config file. It seeds the
+	// delegate cycle-detection set so a child delegating back to the root config
+	// is caught.
+	ConfigPath string
 }
 
 // CurrentPlatform returns the normalised runtime OS string: darwin → "macos";

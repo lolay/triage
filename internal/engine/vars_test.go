@@ -90,8 +90,8 @@ func TestExpandCheck_AllFields(t *testing.T) {
 
 func TestRunner_VarInToolName(t *testing.T) {
 	r := NewRunnerWith(RunnerOpts{
-		Vars:     map[string]string{"tool_name": "git"},
-		LookPath: fakeLookPath("git"),
+		ConfigVars: map[string]string{"tool_name": "git"},
+		LookPath:   fakeLookPath("git"),
 	})
 	results := r.Run(config.Profile{{Type: config.TypeTool, Value: "{{ tool_name }}"}})
 	if len(results) != 1 || !results[0].Pass {
@@ -106,8 +106,8 @@ func TestRunner_VarInPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := NewRunnerWith(RunnerOpts{
-		Vars:    map[string]string{"fname": "present.txt"},
-		BaseDir: dir,
+		ConfigVars: map[string]string{"fname": "present.txt"},
+		BaseDir:    dir,
 	})
 	results := r.Run(config.Profile{{Type: config.TypePath, Value: "{{ fname }}"}})
 	if len(results) != 1 || !results[0].Pass {
@@ -117,7 +117,7 @@ func TestRunner_VarInPath(t *testing.T) {
 
 func TestRunner_VarInCommand(t *testing.T) {
 	r := NewRunnerWith(RunnerOpts{
-		Vars: map[string]string{"region": "us-west-2"},
+		ConfigVars: map[string]string{"region": "us-west-2"},
 		RunCommand: func(_ context.Context, _, script, _ string, _ map[string]string) (string, int, error) {
 			if script != "echo us-west-2" {
 				t.Errorf("script = %q", script)
@@ -168,9 +168,9 @@ func TestRunner_UnknownVarFails(t *testing.T) {
 
 func TestEffectiveVars_BuiltinsWin(t *testing.T) {
 	r := NewRunnerWith(RunnerOpts{
-		Vars:    map[string]string{"profile": "wrong", "os": "wrong"},
-		Profile: "release",
-		GOOS:    "linux",
+		ConfigVars: map[string]string{"profile": "wrong", "os": "wrong"},
+		Profile:    "release",
+		GOOS:       "linux",
 	})
 	ev := r.effectiveVars()
 	if ev["profile"] != "release" || ev["os"] != "linux" {

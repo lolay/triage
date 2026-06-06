@@ -130,14 +130,15 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 		profile = config.Profile{}
 	}
 
-	// Merge config vars with --var CLI overrides (CLI wins).
+	// Parse --var CLI overrides; they are passed alongside (not merged into) the
+	// config vars so each delegated child config uses its own vars while CLI
+	// overrides apply tree-wide.
 	cliVars, err := parseCLIVars(f.Vars)
 	if err != nil {
 		*exitCode = ExitUsageError
 		fmt.Fprintf(stderr, "triage: %v\n", err)
 		return nil
 	}
-	varMap := mergeVarMaps(cfg.Vars, cliVars)
 
 	// Open --command-log if requested (nil = disabled).
 	var cmdLog *engine.CommandLog
@@ -154,12 +155,15 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 	// Run the check engine with fully-wired options.
 	rOpts := engine.RunnerOpts{
 		BaseDir:    filepath.Dir(cfg.Path),
+		ConfigPath: cfg.Path,
 		GOOS:       engine.CurrentPlatform(),
 		Profile:    f.Profile,
-		Vars:       varMap,
+		ConfigVars: cfg.Vars,
+		CLIVars:    cliVars,
 		CommandLog: cmdLog,
 	}
-	results := engine.NewRunnerWith(rOpts).Run(profile)
+	runner := engine.NewRunnerWith(rOpts)
+	results := runner.Run(profile)
 
 	// Render output.
 	opts := report.BoardOpts{
@@ -201,6 +205,14 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 				fmt.Fprintf(stderr, "\n--- %s ---\n%s\n", r.Label, r.Output)
 			}
 		}
+	}
+
+	// A fatal config error during the run (e.g. a delegate cycle) overrides the
+	// normal exit-code ladder with a usage/config error.
+	if ferr := runner.Fatal(); ferr != nil {
+		fmt.Fprintf(stderr, "triage: %v\n", ferr)
+		*exitCode = ExitUsageError
+		return nil
 	}
 
 	*exitCode = ExitCode(results, f.Strict, f.Severity)

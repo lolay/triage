@@ -248,19 +248,23 @@ func TestRunner_GroupFailsWhenChildFails(t *testing.T) {
 	}
 }
 
-func TestRunner_InfoSkipForUnimplementedType(t *testing.T) {
-	// delegate is deferred to m5; it should still emit a non-failing info skip.
-	runner := NewRunnerWith(opts(nil, nil))
+func TestRunner_DelegateMissingChildFails(t *testing.T) {
+	// A delegate whose child config can't be found fails red (exit 1) rather
+	// than crashing, and is not a fatal config error (exit 3).
+	runner := NewRunnerWith(RunnerOpts{BaseDir: t.TempDir()})
 	results := runner.Run(config.Profile{
-		{Type: config.TypeDelegate, Value: "some-repo"},
+		{Type: config.TypeDelegate, Value: "child", Dir: "does-not-exist"},
 	})
 	if len(results) != 1 {
 		t.Fatalf("want 1 result, got %d", len(results))
 	}
-	if results[0].Severity != SeverityInfo {
-		t.Errorf("unimplemented type should emit SeverityInfo, got %v", results[0].Severity)
+	if results[0].Kind != KindLeaf {
+		t.Errorf("childless delegate failure should be a counted KindLeaf, got %v", results[0].Kind)
 	}
-	if !results[0].Pass {
-		t.Errorf("unimplemented type should be non-failing")
+	if results[0].Pass || results[0].Severity != SeverityError {
+		t.Errorf("missing child should fail with SeverityError: %+v", results[0])
+	}
+	if runner.Fatal() != nil {
+		t.Errorf("missing child is not a fatal config error: %v", runner.Fatal())
 	}
 }

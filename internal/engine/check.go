@@ -13,8 +13,9 @@ const (
 type ResultKind int
 
 const (
-	KindLeaf   ResultKind = iota // a single check result
-	KindHeader                   // a group header (worst glyph of its children)
+	KindLeaf     ResultKind = iota // a single check result
+	KindHeader                     // a group header (worst glyph of its children)
+	KindDelegate                   // a delegate summary (worst glyph of a child config's subtree)
 )
 
 // Result records the outcome of a single check execution or a group header.
