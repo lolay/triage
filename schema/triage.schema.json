@@ -10,6 +10,12 @@
       "description": "Files to compose, processed in order. Paths resolve relative to this file's directory. Collisions (same profile + check) are flagged at load time; the later definition wins.",
       "type": "array",
       "items": { "type": "string" }
+    },
+    "vars": {
+      "title": "vars",
+      "description": "Reusable values referenced via {{ name }} in check fields. Overridable with --var name=value.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
     }
   },
   "additionalProperties": { "$ref": "#/$defs/profile" },

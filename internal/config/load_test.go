@@ -373,3 +373,88 @@ func TestLoad_EmptyProfile(t *testing.T) {
 		t.Errorf("want empty profile")
 	}
 }
+
+// ── vars ──────────────────────────────────────────────────────────────────────
+
+func TestLoad_VarsParsing(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `vars:
+  region: us-west-2
+  tool_prefix: fake
+default:
+  - tool: git
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.Vars["region"] != "us-west-2" || cfg.Vars["tool_prefix"] != "fake" {
+		t.Errorf("vars = %#v", cfg.Vars)
+	}
+}
+
+func TestLoad_VarsIncludeMergeLaterWins(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "base.yaml", `vars:
+  region: from-base
+`)
+	writeFile(t, dir, "triage.yaml", `include:
+  - base.yaml
+vars:
+  region: from-top
+default: []
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.Vars["region"] != "from-top" {
+		t.Errorf("region = %q, want from-top", cfg.Vars["region"])
+	}
+}
+
+func TestLoad_VarsCollisionWarns(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "base.yaml", `vars:
+  key: first
+`)
+	writeFile(t, dir, "triage.yaml", `include:
+  - base.yaml
+vars:
+  key: second
+default: []
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(cfg.Warnings) != 1 || !strings.Contains(cfg.Warnings[0], `"key"`) {
+		t.Errorf("want vars collision warning, got %v", cfg.Warnings)
+	}
+	if cfg.Vars["key"] != "second" {
+		t.Errorf("later value should win, got %q", cfg.Vars["key"])
+	}
+}
+
+func TestLoad_VarsReservedNameWarns(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `vars:
+  profile: oops
+  os: bad
+  ok: fine
+default: []
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(cfg.Warnings) != 2 {
+		t.Errorf("want 2 reserved-name warnings, got %v", cfg.Warnings)
+	}
+	if _, ok := cfg.Vars["profile"]; ok {
+		t.Error("profile should not be in merged vars")
+	}
+	if cfg.Vars["ok"] != "fine" {
+		t.Errorf("ok var missing: %#v", cfg.Vars)
+	}
+}

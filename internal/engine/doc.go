@@ -4,17 +4,17 @@
 //   - env: presence check (optional matches regex; unset mode).
 //   - path: glob + ~ expansion, resolved against opts.BaseDir / c.Dir.
 //   - one_of: evaluates alternatives silently; emits one atomic leaf result.
-//   - command: explicit interpreter (-c), {{profile}} expansion, optional
-//     with_env map (layered over inherited env; values support {{profile}}),
-//     bounded stdout capture (captureCap = 256 KiB), exit / contains / matches
-//     assertions, and optional CommandLog streaming.
+//   - command: explicit interpreter (-c), unified {{ name }} template expansion
+//     (vars: + built-ins profile/os), optional with_env map (layered over inherited
+//     env), bounded stdout capture (captureCap = 256 KiB), exit / contains /
+//     matches assertions, and optional CommandLog streaming.
 //   - platform: guards on any check/group; non-matching checks are omitted
 //     entirely (no board line, no summary count).
 //   - delegate: deferred to m5; still emits a non-failing SeverityInfo skip.
 //
 // RunnerOpts is extended with GOOS (injectable OS, darwin→macos normalised),
-// LookupEnv, BaseDir, RunCommand, CommandLog, and Profile. All injections
-// default to real OS behaviour so the zero value is always usable in production.
+// LookupEnv, BaseDir, RunCommand, CommandLog, Profile, and Vars. Template
+// expansion merges Vars with built-ins profile and os at runtime.
 //
 // CurrentPlatform() normalises runtime.GOOS; the env var TRIAGE_TEST_GOOS
 // overrides it in tests so golden fixtures can pin a specific OS.

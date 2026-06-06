@@ -19,6 +19,12 @@ var reservedTypeKeys = map[string]bool{
 	TypeCommand: true, TypeDelegate: true, TypeGroup: true,
 }
 
+// reservedBuiltinVars are injected at runtime; defining them under vars: is ignored.
+var reservedBuiltinVars = map[string]bool{
+	"profile": true,
+	"os":      true,
+}
+
 // load parses, composes, and resolves the config rooted at the entry file path.
 //
 // Pipeline (spec §4): parse → process include: files in order (merging profiles,
@@ -35,6 +41,7 @@ func load(path string) (*Config, error) {
 	l := &loader{
 		composite: map[string]*compositeProfile{},
 		memo:      map[string]Profile{},
+		vars:      map[string]string{},
 	}
 	if err := l.loadFile(abs, map[string]bool{}); err != nil {
 		return nil, err
@@ -56,7 +63,7 @@ func load(path string) (*Config, error) {
 		resolved[name] = p
 	}
 
-	return &Config{Path: abs, Profiles: resolved, Warnings: l.warnings}, nil
+	return &Config{Path: abs, Profiles: resolved, Vars: l.vars, Warnings: l.warnings}, nil
 }
 
 // compositeProfile is a profile after include-merge but before extends/add
@@ -69,6 +76,7 @@ type compositeProfile struct {
 type loader struct {
 	composite map[string]*compositeProfile
 	memo      map[string]Profile
+	vars      map[string]string
 	warnings  []string
 }
 
@@ -107,6 +115,7 @@ func (l *loader) loadFile(absPath string, visited map[string]bool) error {
 	dir := filepath.Dir(absPath)
 
 	var includes []string
+	var fileVars map[string]string
 	type profileNode struct {
 		name string
 		node ast.Node
@@ -121,6 +130,12 @@ func (l *loader) loadFile(absPath string, visited map[string]bool) error {
 		if key == "include" {
 			if err := yaml.NodeToValue(mv.Value, &includes); err != nil {
 				return fmt.Errorf("%s: include: %w", absPath, err)
+			}
+			continue
+		}
+		if key == "vars" {
+			if err := yaml.NodeToValue(mv.Value, &fileVars); err != nil {
+				return fmt.Errorf("%s: vars: %w", absPath, err)
 			}
 			continue
 		}
@@ -144,6 +159,11 @@ func (l *loader) loadFile(absPath string, visited map[string]bool) error {
 		if err := l.loadFile(incAbs, visited); err != nil {
 			return err
 		}
+	}
+
+	// This file's own vars merge on top of whatever the includes provided.
+	if len(fileVars) > 0 {
+		l.mergeVars(fileVars, absPath)
 	}
 
 	// This file's own profiles merge on top of whatever the includes provided.
@@ -190,6 +210,21 @@ func (l *loader) parseProfileNode(name string, node ast.Node, dir, file string) 
 	default:
 		return nil, nil, fmt.Errorf("%s: profile %q must be a list of checks or an "+
 			"{extends, add} mapping, got %s", file, name, node.Type())
+	}
+}
+
+// mergeVars folds a file's vars: block into the composite. Later definitions win;
+// reserved built-in names (profile, os) are ignored with a warning.
+func (l *loader) mergeVars(from map[string]string, file string) {
+	for k, v := range from {
+		if reservedBuiltinVars[k] {
+			l.warnf("%s: vars: %q is reserved (built-in); ignored", file, k)
+			continue
+		}
+		if _, dup := l.vars[k]; dup {
+			l.warnf("vars: %q in %s overrides an earlier definition (later wins)", k, file)
+		}
+		l.vars[k] = v
 	}
 }
 

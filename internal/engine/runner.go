@@ -15,6 +15,7 @@ import (
 // entirely (no board line, no count). delegate is deferred to m5.
 type Runner struct {
 	opts RunnerOpts
+	vars map[string]string // effective template vars (config + CLI + built-ins)
 }
 
 // NewRunner creates a Runner with default (real) LookPath and probe functions.
@@ -27,7 +28,20 @@ func NewRunnerWith(opts RunnerOpts) *Runner { return &Runner{opts: opts} }
 // Result slice. Group headers appear immediately before their children and carry
 // the worst-status glyph of the group.
 func (r *Runner) Run(profile config.Profile) []Result {
+	r.vars = r.effectiveVars()
 	return r.runChecks(context.Background(), profile, 0)
+}
+
+// effectiveVars builds the template variable map: config/CLI vars with built-in
+// profile and os injected last (built-ins always win).
+func (r *Runner) effectiveVars() map[string]string {
+	out := make(map[string]string, len(r.opts.Vars)+2)
+	for k, v := range r.opts.Vars {
+		out[k] = v
+	}
+	out["profile"] = r.opts.Profile
+	out["os"] = r.goos()
+	return out
 }
 
 func (r *Runner) runChecks(ctx context.Context, checks config.Profile, depth int) []Result {
@@ -66,6 +80,27 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 	if !platformMatches(c, r.goos()) {
 		return nil
 	}
+
+	expanded, err := expandCheck(c, r.vars)
+	if err != nil {
+		label := c.Label
+		if label == "" {
+			label = c.Value
+		}
+		if label == "" {
+			label = c.Type
+		}
+		return []Result{{
+			Label:    label,
+			Severity: SeverityError,
+			Pass:     false,
+			Message:  err.Error(),
+			Depth:    depth,
+			Group:    c.Group,
+			Kind:     KindLeaf,
+		}}
+	}
+	c = expanded
 
 	sev := resolveSeverity(c)
 

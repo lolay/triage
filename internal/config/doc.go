@@ -11,6 +11,8 @@
 //     type-specific fields (spec §5);
 //   - include: top-level files merged in order, collisions flagged (later wins),
 //     cycle/diamond-safe;
+//   - vars: top-level reusable values merged across includes (later wins);
+//     referenced via {{ name }} in check fields at runtime;
 //   - extends/add: per-profile inheritance resolved within the merged config,
 //     cycle/diamond-safe;
 //   - version_from: pin files read relative to the declaring file and resolved

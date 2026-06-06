@@ -84,6 +84,7 @@ func bindFlags(cmd *cobra.Command, f *Flags) {
 	fl := cmd.Flags()
 
 	fl.StringVar(&f.Profile, "profile", "default", "Profile to run")
+	fl.StringArrayVar(&f.Vars, "var", nil, "Set a template variable (name=value); repeatable, overrides vars: in config")
 	fl.BoolVar(&f.JSON, "json", false, "Emit machine-readable JSON instead of the board")
 	fl.BoolVar(&f.Quiet, "quiet", false, "Suppress passing checks; show only failures")
 	fl.BoolVar(&f.Strict, "strict", false, "Escalate warnings to errors")
@@ -129,6 +130,15 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 		profile = config.Profile{}
 	}
 
+	// Merge config vars with --var CLI overrides (CLI wins).
+	cliVars, err := parseCLIVars(f.Vars)
+	if err != nil {
+		*exitCode = ExitUsageError
+		fmt.Fprintf(stderr, "triage: %v\n", err)
+		return nil
+	}
+	varMap := mergeVarMaps(cfg.Vars, cliVars)
+
 	// Open --command-log if requested (nil = disabled).
 	var cmdLog *engine.CommandLog
 	if f.CommandLog != "" {
@@ -146,6 +156,7 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 		BaseDir:    filepath.Dir(cfg.Path),
 		GOOS:       engine.CurrentPlatform(),
 		Profile:    f.Profile,
+		Vars:       varMap,
 		CommandLog: cmdLog,
 	}
 	results := engine.NewRunnerWith(rOpts).Run(profile)

@@ -82,6 +82,9 @@ type RunnerOpts struct {
 	CommandLog *CommandLog
 	// Profile is the active profile name, used for {{profile}} expansion.
 	Profile string
+	// Vars holds config/CLI template variables (built-ins profile/os are injected
+	// at runtime and override any user-defined values of the same name).
+	Vars map[string]string
 }
 
 // CurrentPlatform returns the normalised runtime OS string: darwin → "macos";

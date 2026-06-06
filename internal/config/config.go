@@ -17,6 +17,8 @@ type Config struct {
 	Path string
 	// Profiles maps profile names to their resolved, ordered check lists.
 	Profiles map[string]Profile
+	// Vars holds merged top-level vars: values (referenced via {{ name }} in checks).
+	Vars map[string]string
 	// Warnings are non-fatal load-time diagnostics, in deterministic order.
 	Warnings []string
 }

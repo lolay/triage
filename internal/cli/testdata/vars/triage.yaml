@@ -1,0 +1,16 @@
+vars:
+  tool_name: fake-alpha
+  echo_msg: hello-vars
+
+default:
+  - tool: "{{ tool_name }}"
+  - command: 'echo "$ECHO_VAR"'
+    label: with_env from var
+    with_env:
+      ECHO_VAR: "{{ echo_msg }}"
+    contains: hello-vars
+  - command: 'echo {{ profile }}'
+    label: profile builtin
+    contains: default
+  - tool: "{{ typo }}"
+    label: unknown var

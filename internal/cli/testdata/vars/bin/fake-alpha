@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "fake-alpha 1.0.0"

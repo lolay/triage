@@ -182,18 +182,50 @@ phase.
 - **Profiles at the root — no `profiles:` wrapper.** Root is always a **mapping**.
 Checks never sit at the top level — only under profile keys. Parsing rule:
   1. **`include`** — reserved. Composes other files (processed first, in order).
-  2. **Any other key** — a **profile name**. Value is a check **list**, or
+  2. **`vars`** — reserved. A mapping of reusable string values referenced in
+     check fields via `{{ name }}` (see below). Merged across `include:` files
+     (later wins; collisions warned). Overridable at runtime with
+     `--var name=value` (repeatable; CLI wins over config). Built-in vars
+     `profile` and `os` are injected by the engine and cannot be defined under
+     `vars:` (ignored with a warning).
+  3. **Any other key** — a **profile name**. Value is a check **list**, or
      `{ extends: […], add: […] }` when inheriting. Use **`add:`** (not `checks:`)
      with `extends`.
-  3. **`default` is the only special profile name** — it is the profile `triage`
+  4. **`default` is the only special profile name** — it is the profile `triage`
      runs when `--profile` is omitted. **`default` may be omitted** from a file
      (treated as an empty profile). Included files may define only non-`default`
      profiles (e.g. `release:`) when `default` is supplied by an earlier
      `include`.
-  4. **Unlimited arbitrary profile names** — `release`, `ci`, `publish`, or any
-     other key that is not `include` or `default` (e.g. `release` is a convention,
-     not a built-in). Select with `triage --profile <name>`. Only the top-level
-     key **`include`** is reserved (not a profile).
+  5. **Unlimited arbitrary profile names** — `release`, `ci`, `publish`, or any
+     other key that is not `include`, `vars`, or `default` (e.g. `release` is a
+     convention, not a built-in). Select with `triage --profile <name>`.
+- **`vars:` + `{{ name }}` templates.** Reference a var in any check string
+  field (`tool`, `version`, `path`, `command`, `label`, `hint`, `dir`,
+  `with_env` values, …) with `{{ var_name }}` (whitespace inside braces is
+  allowed). Precedence: config `vars:` < `--var` CLI override < built-ins
+  (`profile`, `os`). Expansion is **fail-closed**: an undefined `{{ name }}`,
+  **and** any malformed token — a `{{` that does not begin a well-formed
+  `{{ name }}` (e.g. `{{ 1bad }}`, `{{ a-b }}`, `{{}}`, an unclosed `{{`) —
+  fails the check with a clear error on the board rather than passing through as
+  literal text. A name is a letter or underscore followed by letters, digits, or
+  underscores. **Vars are not recursive** — a `{{ name }}` inside a `vars:` value
+  is **not** re-expanded; values are substituted in a single pass. (Var-in-var
+  indirection is intentionally a non-feature today and could be added later via
+  load-time, dependency-ordered resolution.) Example:
+
+```yaml
+vars:
+  region: us-west-2
+  tool_prefix: fake
+
+default:
+  - tool: "{{ tool_prefix }}-git"
+  - command: 'echo {{ region }}'
+    label: region check
+    contains: us-west-2
+```
+
+Run `triage --var region=eu …` to override `region` without editing the file.
 - **Config file names:** `triage.yaml` (canonical) or `.triage.yaml` (hidden);
 both accepted. One **entry** file per run — no per-mode files, no `triage/`
 config directory, no multi-root discovery. Large or shared setups compose via
@@ -268,13 +300,15 @@ Type-specific:
 - `command` needs a `label:` (the snippet isn't a friendly name); assertion
 defaults to **exit 0**, or set `contains:` / `matches:` (stdout) / `exit:`
 (expected code); `interp:` picks `sh`/`pwsh` (default `sh`, never implicit).
-`{{profile}}` in the command string expands to the active profile name. Optional
+Template vars (`{{ name }}`) expand in the command string and all other check
+string fields (see §4 `vars:`). Built-in `{{ profile }}` and `{{ os }}` are
+always available. Optional
 **`dir:`** sets the working directory before the command runs — the right way to
 invoke a member repo's `make doctor` (or any other script) without treating it as
 a triage delegate. Optional **`with_env:`** injects a map of environment
 variables for that command only: pairs are layered over the inherited process
 environment (later keys override inherited values of the same name). Values support
-`{{profile}}` expansion; triage does not perform `$VAR` interpolation — the shell
+`{{ name }}` expansion; triage does not perform `$VAR` interpolation — the shell
 still does that inside the snippet. Example:
 
 ```yaml
@@ -282,7 +316,7 @@ still does that inside the snippet. Example:
   label: terraform config valid
   with_env:
     TF_IN_AUTOMATION: "1"
-    MODE: "{{profile}}"
+    MODE: "{{ profile }}"
 ```
 
 This also covers **auth/session validity** — run the CLI's

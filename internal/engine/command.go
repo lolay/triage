@@ -63,18 +63,6 @@ func mergeEnv(inherited []string, overrides map[string]string) []string {
 	return out
 }
 
-// expandProfileInMap returns a copy of m with {{profile}} replaced in each value.
-func expandProfileInMap(m map[string]string, profile string) map[string]string {
-	if len(m) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(m))
-	for k, v := range m {
-		out[k] = strings.ReplaceAll(v, "{{profile}}", profile)
-	}
-	return out
-}
-
 // envPrefix formats injected env pairs as a paste-safe shell prefix (sorted
 // keys). Values containing spaces or special characters are single-quoted so
 // the log line can be copy-pasted back into a shell.
@@ -113,10 +101,10 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-// checkCommand evaluates a command: check (spec §5). It expands {{profile}},
-// resolves the working directory, invokes the interpreter (default: sh),
-// asserts exit code / contains / matches against bounded stdout, and writes
-// a block to CommandLog when active.
+// checkCommand evaluates a command: check (spec §5). The check arrives with
+// template vars already expanded. It resolves the working directory, invokes
+// the interpreter (default: sh), asserts exit/contains/matches, and writes a
+// CommandLog block when active.
 func (r *Runner) checkCommand(ctx context.Context, c config.Check) Result {
 	runCmd := r.opts.RunCommand
 	if runCmd == nil {
@@ -128,9 +116,9 @@ func (r *Runner) checkCommand(ctx context.Context, c config.Check) Result {
 		interp = "sh"
 	}
 
-	// {{profile}} template expansion.
-	script := strings.ReplaceAll(c.Value, "{{profile}}", r.opts.Profile)
-	cmdEnv := expandProfileInMap(c.WithEnv, r.opts.Profile)
+	// c.Value and c.WithEnv arrive pre-expanded via expandCheck in runCheck.
+	script := c.Value
+	cmdEnv := c.WithEnv
 
 	label := c.Label
 	if label == "" {

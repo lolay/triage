@@ -3,6 +3,7 @@ package cli
 // Flags holds all parsed command-line options for a triage run.
 type Flags struct {
 	Profile       string
+	Vars          []string // raw --var name=value entries
 	JSON          bool
 	Quiet         bool
 	Strict        bool

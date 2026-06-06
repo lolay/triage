@@ -114,6 +114,13 @@ var e2eCases = []e2eCase{
 			"TRIAGE_FAKE_KEY":   "secret",
 		},
 	},
+	{
+		// vars: template expansion in tool name, with_env, profile builtin;
+		// unknown {{ typo }} fails → exit 1.
+		name:     "vars",
+		args:     []string{"--no-color"},
+		wantExit: 1,
+	},
 }
 
 // TestGolden runs each fixture through ExecuteWith in-process, captures stdout,
