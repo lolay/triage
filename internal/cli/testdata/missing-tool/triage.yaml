@@ -1,0 +1,5 @@
+default:
+  - tool: fake-present
+    hint: brew install fake-present
+  - tool: totally-missing
+    hint: brew install totally-missing

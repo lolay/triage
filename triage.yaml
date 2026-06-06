@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=schema/triage.schema.json
 # triage.yaml — triage checks its own dev environment (dogfooding).
 #
 # Run `make doctor` (→ `triage`) in this repo and you should get a clean

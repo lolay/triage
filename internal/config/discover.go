@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"gopkg.in/yaml.v3"
 )
 
 // ErrNotFound is returned when no config file can be located. The CLI maps
@@ -56,34 +54,4 @@ func findInDir(dir string) (string, error) {
 		return "", fmt.Errorf("%w: no triage.yaml or .triage.yaml in the current directory", ErrNotFound)
 	}
 	return "", fmt.Errorf("%w: no triage.yaml or .triage.yaml in %s", ErrNotFound, dir)
-}
-
-// load parses the config file at path.
-//
-// The m1 stub confirms the root is a YAML mapping and returns an empty check
-// list for every profile key it discovers. Real schema validation lands in m2.
-func load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading config: %w", err)
-	}
-
-	// Unmarshal into a raw map to confirm the root is a YAML mapping and to
-	// enumerate the declared profile names. Values are intentionally ignored.
-	var raw map[string]interface{}
-	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return nil, fmt.Errorf("parsing config %s: %w", path, err)
-	}
-
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		abs = path
-	}
-
-	profiles := make(map[string]Profile, len(raw))
-	for k := range raw {
-		profiles[k] = Profile{} // always empty in m1; real loader in m2
-	}
-
-	return &Config{Path: abs, Profiles: profiles}, nil
 }

@@ -1,0 +1,7 @@
+triage (profile: default)
+
+[✓] Core toolchain
+    [✓] fake-git
+    [✓] fake-go 1.26.3 (>=1.21)
+
+✓ 2 ok

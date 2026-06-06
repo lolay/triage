@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/triage.schema.json
 # vitalink-infra — Terraform (fictional).
 #
 # Exercises: version_from (.terraform-version) and a release profile that adds

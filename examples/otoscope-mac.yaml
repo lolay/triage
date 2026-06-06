@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/triage.schema.json
 # otoscope-mac — macOS Swift app (fictional). Stress test for command / platform /
 # path / one_of / structural group containers, modeled on Apple signing +
 # asset-publishing toolchain.

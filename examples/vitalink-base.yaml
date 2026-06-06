@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/triage.schema.json
 # vitalink-base.yaml — shared checks every Vitalink repo wants.
 #
 # Vitalink is a fictional health-tech company used only to demonstrate triage;

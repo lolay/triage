@@ -10,7 +10,7 @@ const (
 	ExitOK         = 0 // all checks pass
 	ExitFail       = 1 // any check fails (default pass-fail mode)
 	ExitError      = 2 // --severity: ≥1 error-severity failure
-	ExitUsageError = 3 // config not found, flag parse error, or --migrate stub
+	ExitUsageError = 3 // config not found, flag parse error, or usage error
 )
 
 // ExitCode computes the process exit code from check results and active flags.
@@ -47,7 +47,7 @@ func ExitCode(results []engine.Result, strict, severityMode bool) int {
 		}
 	}
 
-	if hasError || hasWarn {
+	if hasError {
 		return ExitFail
 	}
 	return ExitOK

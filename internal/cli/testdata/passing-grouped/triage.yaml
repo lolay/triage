@@ -1,0 +1,8 @@
+default:
+  - group: Core toolchain
+    items:
+      - tool: fake-git
+        hint: https://git-scm.com
+      - tool: fake-go
+        version: ">=1.21"
+        hint: https://go.dev/dl

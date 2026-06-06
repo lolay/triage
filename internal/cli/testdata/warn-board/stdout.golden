@@ -1,0 +1,8 @@
+triage (profile: default)
+
+[✓] fake-present
+[!] fake-optional — fake-optional not found — brew install fake-optional
+
+! 1 warning, 1 ok — see [!] items above
+To fix, run:
+    brew install fake-optional

@@ -221,7 +221,7 @@ triage --version                # print version and exit
 triage --help                   # flags + usage
 ```
 
-**Default action:** unless `--version` / `--help` / `--migrate` (below), `triage`
+**Default action:** unless `--version` / `--help`, `triage`
 loads a config and runs the active profile. All other behavior is flags on that
 same command (§7.3).
 
@@ -239,13 +239,7 @@ run checks.
 
 More than one positional argument → usage error (exit `3`).
 
-**No other subcommands in v1.** Migration is a flag, not a verb:
-
-```text
-triage --migrate                # one-shot: doctor.*.conf → triage.yaml (m2)
-```
-
-Deferred (m7): `--fix`, self-update — still flags or separate entry points TBD
+**No other subcommands in v1.** Deferred (m7): `--fix`, self-update — still flags or separate entry points TBD
 (§7.4), not a growing subcommand tree.
 
 ## 5. Check types
@@ -662,8 +656,6 @@ don't break the build — no shell guard needed:
   Every existing `make doctor [MODE=]` keeps working; users notice only that the
   vendored scripts are gone. (Add `--severity` if a CI job wants to branch on
   warnings; add `--strict` if warnings should fail.)
-- **Converter.** `triage --migrate` reads `doctor.*.conf` and emits `triage.yaml`
-so no repo hand-translates.
 - **Rollout (adopter playbook):** add `triage` to a repo → switch `make doctor` →
 delete vendored `scripts/doctor*.sh` + `*.conf`. Per-repo migration is **out of
 scope** for this project's milestones (§9) — done in consuming repos, not tracked
@@ -682,7 +674,7 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 ### m1 — Project, CLI skeleton & README
 
 - s1 — [deep] Repo bootstrap: Go module + `.go-version`, layout (`cmd/triage`, `internal/`), root `Makefile` (§11 conventions: `help` default, self-documenting `##`/`##@`, `build`/`test`/`lint`/`doctor`/`ci`/`pre-commit`/`clean`/`init`), CI calls `make ci`, `goreleaser` stub (no publish yet). Community files (LICENSE/README/CONTRIBUTING/COC/SECURITY/SUPPORT) already exist (§11); `.github/` = workflows + CODEOWNERS only — no issue/PR templates (§12)
-- s2 — [exec] `cobra` CLI shell: flat `triage` (default = run checks), optional `[config]` positional, `--version`, `--migrate`, global flags (`--profile`, `--json`, `--quiet`, `--strict`, `--severity`, `--no-color`, `--command-log`, `--verbose`, `--no-update-check`); exit-code plumbing (pass-fail `0`/`1`/`3` default; `--severity` → `0`/`1`/`2`/`3`) (§4 CLI). **`--only` deferred** (§7.3)
+- s2 — [exec] `cobra` CLI shell: flat `triage` (default = run checks), optional `[config]` positional, `--version`, global flags (`--profile`, `--json`, `--quiet`, `--strict`, `--severity`, `--no-color`, `--command-log`, `--verbose`, `--no-update-check`); exit-code plumbing (pass-fail `0`/`1`/`3` default; `--severity` → `0`/`1`/`2`/`3`) (§4 CLI). **`--only` deferred** (§7.3)
 - s3 — [exec] README already drafted (§11) — keep in sync as flags/commands land
 - s4 — [fast] Golden-output harness + first end-to-end test (empty config → clean board)
 
@@ -691,7 +683,6 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 - s1 — [deep] `triage.yaml` schema + loader (`goccy/go-yaml`): mapping root, top-level profile keys (no `profiles:` wrapper; no bare checks at root), `include`, optional empty `default`, `extends`/`add`, `version_from`, type-as-key checks; publish a JSON Schema for editors
 - s2 — [exec] `tool` check: presence via `exec.LookPath`, version extraction (incl. `go version`-style overrides), `version` (npm-style ranges) + `version_from` via `Masterminds/semver`
 - s3 — [exec] Severity model (`error`/`warn`/`info` + `required` sugar, `--strict`); grouped output (`group` containers + remediation summary); pending `[…]` + TTY back-update for slow checks (§7.2)
-- s4 — [exec] `triage --migrate` v1: `doctor.*.conf` → `triage.yaml` (so no repo hand-translates)
 
 ### m3 — Full check types
 
@@ -915,7 +906,7 @@ tags `v0.3`/`v0` (m6).
 `make doctor` stragglers; all checks in list order; pass/fail per delegate (§5).
 - **CLI:** flat `triage` — default action is run checks; config in **cwd** only
 (or explicit `[config]` path); missing config → message + `--help` text, exit `3`;
-`--version` / `--migrate`; no `check` subcommand (§4).
+`--version`; no `check` subcommand (§4).
 - **Make integration:** `make doctor` calls `triage` (pass-fail default) so
 warnings don't break the build (§8).
 - **Examples:** illustrative multi-repo shapes in `examples/` (§4).

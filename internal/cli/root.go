@@ -14,6 +14,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/lolay/triage/internal/buildinfo"
 	"github.com/lolay/triage/internal/config"
@@ -89,7 +90,6 @@ func bindFlags(cmd *cobra.Command, f *Flags) {
 	fl.BoolVar(&f.NoColor, "no-color", false, "Disable ANSI color output")
 	fl.BoolVar(&f.Verbose, "verbose", false, "Replay probe subprocess output for failures on stderr")
 	fl.BoolVar(&f.NoUpdateCheck, "no-update-check", false, "Disable the update-availability banner")
-	fl.BoolVar(&f.Migrate, "migrate", false, "Migrate config to the current schema (not yet implemented)")
 
 	// --command-log has an optional value: present with no path uses the
 	// default; present with a path uses that path; absent = disabled.
@@ -101,13 +101,6 @@ func bindFlags(cmd *cobra.Command, f *Flags) {
 
 // run is the core logic invoked by cobra's RunE.
 func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, exitCode *int) error {
-	// --migrate stub: not implemented until m2.
-	if f.Migrate {
-		fmt.Fprintln(stdout, "triage: --migrate is not yet implemented (coming in m2)")
-		*exitCode = ExitUsageError
-		return nil
-	}
-
 	// Resolve the optional [config] positional argument.
 	configArg := ""
 	if len(args) > 0 {
@@ -124,16 +117,26 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 		return nil
 	}
 
-	// Select the active profile (always empty in m1).
+	// Surface non-fatal load-time diagnostics on stderr, before the board.
+	for _, w := range cfg.Warnings {
+		fmt.Fprintln(stderr, "triage: warning:", w)
+	}
+
+	// Select the active profile (check execution lands in m2 s2).
 	profile := cfg.Profiles[f.Profile]
 	if profile == nil {
 		profile = config.Profile{}
 	}
 
-	// Run the check engine (no-op in m1; real execution in m2).
+	// Run the check engine.
 	results := engine.NewRunner().Run(profile)
 
 	// Render output.
+	opts := report.BoardOpts{
+		Profile: f.Profile,
+		NoColor: f.NoColor,
+		Quiet:   f.Quiet,
+	}
 	if f.JSON {
 		if err := report.JSON(stdout, results, f.Profile); err != nil {
 			fmt.Fprintf(stderr, "triage: json output: %v\n", err)
@@ -141,13 +144,28 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 			return nil
 		}
 	} else {
-		report.Board(stdout, results, report.BoardOpts{
-			Profile: f.Profile,
-			NoColor: f.NoColor,
-			Quiet:   f.Quiet,
-		})
+		isTTY := isTerminal(stdout)
+		opts.IsTTY = isTTY
+		if isTTY {
+			sink := report.NewTTYSink(stdout, opts)
+			sink.Begin(f.Profile)
+			for _, r := range results {
+				sink.Emit(r)
+			}
+			sink.End(results)
+		} else {
+			report.Board(stdout, results, opts)
+		}
 	}
 
 	*exitCode = ExitCode(results, f.Strict, f.Severity)
 	return nil
+}
+
+// isTerminal reports whether w is a file descriptor connected to a terminal.
+func isTerminal(w io.Writer) bool {
+	if f, ok := w.(*os.File); ok {
+		return term.IsTerminal(int(f.Fd()))
+	}
+	return false
 }

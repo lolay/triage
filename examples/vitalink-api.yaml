@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/triage.schema.json
 # vitalink-api — Go service (fictional).
 #
 # Exercises: include (shared base), version_from (read .go-version), profile

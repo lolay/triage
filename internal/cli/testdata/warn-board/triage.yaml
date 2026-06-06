@@ -1,0 +1,6 @@
+default:
+  - tool: fake-present
+    hint: brew install fake-present
+  - tool: fake-optional
+    severity: warn
+    hint: brew install fake-optional

@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lolay/triage/schema/triage.schema.json",
+  "title": "triage.yaml",
+  "description": "Configuration for the triage environment doctor (spec §4–§5). Root is always a mapping: the reserved 'include' key composes other files, every other key is a profile.",
+  "type": "object",
+  "properties": {
+    "include": {
+      "title": "include",
+      "description": "Files to compose, processed in order. Paths resolve relative to this file's directory. Collisions (same profile + check) are flagged at load time; the later definition wins.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": { "$ref": "#/$defs/profile" },
+  "$defs": {
+    "profile": {
+      "title": "profile",
+      "description": "A named set of checks. Either a list of checks, or an {extends, add} mapping that inherits other profiles.",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/check" }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "extends": {
+              "description": "Profiles to inherit from (override semantics; cycle/diamond-safe).",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "add": {
+              "description": "Checks appended to the inherited set.",
+              "type": "array",
+              "items": { "$ref": "#/$defs/check" }
+            }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "severity": {
+      "description": "How a failure is treated, orthogonal to profile (spec §7.1).",
+      "type": "string",
+      "enum": ["error", "warn", "info"]
+    },
+    "platform": {
+      "description": "OS guard: run the check only on matching platforms.",
+      "oneOf": [
+        { "$ref": "#/$defs/os" },
+        { "type": "array", "items": { "$ref": "#/$defs/os" } }
+      ]
+    },
+    "os": {
+      "type": "string",
+      "enum": ["macos", "linux", "windows"]
+    },
+    "common": {
+      "type": "object",
+      "properties": {
+        "severity": { "$ref": "#/$defs/severity" },
+        "required": {
+          "description": "Sugar for severity: true → error, false → warn.",
+          "type": "boolean"
+        },
+        "group": {
+          "description": "Legacy flat-section label. Prefer a structural 'group' container when nesting.",
+          "type": "string"
+        },
+        "platform": { "$ref": "#/$defs/platform" },
+        "hint": {
+          "description": "Actionable remediation shown when the check is not passing.",
+          "type": "string"
+        },
+        "dir": {
+          "description": "Working directory for the check; relative paths resolve from here.",
+          "type": "string"
+        }
+      }
+    },
+    "check": {
+      "title": "check",
+      "description": "A single declarative check. Exactly one type key (tool/env/path/one_of/command/delegate/group) is required.",
+      "type": "object",
+      "allOf": [{ "$ref": "#/$defs/common" }],
+      "properties": {
+        "tool": {
+          "description": "Command that must be present on PATH. Optional version / version_from.",
+          "type": "string"
+        },
+        "env": {
+          "description": "Environment variable to assert present (default) or absent (with unset: true).",
+          "type": "string"
+        },
+        "path": {
+          "description": "File or directory that must exist (globs allowed).",
+          "type": "string"
+        },
+        "one_of": {
+          "description": "At least one alternative must be present: bare tool names or nested sub-checks.",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "$ref": "#/$defs/check" }
+            ]
+          }
+        },
+        "command": {
+          "description": "Explicitly-interpreted, platform-guarded snippet (never an implicit shell). Requires a label.",
+          "type": "string"
+        },
+        "delegate": {
+          "description": "Display name for a nested triage.yaml loaded from dir:.",
+          "type": "string"
+        },
+        "group": {
+          "description": "Structural group container: section name. Children live under items:.",
+          "type": "string"
+        },
+        "items": {
+          "description": "Child checks (and nested groups) of a structural group.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/check" }
+        },
+        "version": {
+          "description": "npm-style semver range for a tool (e.g. \">=1.26\", \"^1.2.0\", \"1.x\"). Quote in YAML.",
+          "type": "string"
+        },
+        "version_from": {
+          "description": "Pin file to read the version constraint from (.go-version, .nvmrc, .terraform-version, …). A bare version becomes \">=x\".",
+          "type": "string"
+        },
+        "unset": {
+          "description": "For env: assert the variable is NOT set. Mutually exclusive with matches.",
+          "type": "boolean"
+        },
+        "matches": {
+          "description": "Regex asserted against the env value (env) or command stdout (command).",
+          "type": "string"
+        },
+        "contains": {
+          "description": "Substring asserted against command stdout.",
+          "type": "string"
+        },
+        "exit": {
+          "description": "Expected exit code for a command (default 0).",
+          "type": "integer"
+        },
+        "interp": {
+          "description": "Interpreter for a command: sh (default) or pwsh. Never implicit.",
+          "type": "string",
+          "enum": ["sh", "pwsh"]
+        },
+        "label": {
+          "description": "Friendly name. Required for command checks; identity key for command/one_of.",
+          "type": "string"
+        },
+        "config": {
+          "description": "For delegate: path to the child config, default triage.yaml under dir:.",
+          "type": "string"
+        }
+      },
+      "anyOf": [
+        { "required": ["tool"] },
+        { "required": ["env"] },
+        { "required": ["path"] },
+        { "required": ["one_of"] },
+        { "required": ["command"] },
+        { "required": ["delegate"] },
+        { "required": ["group"] }
+      ]
+    }
+  }
+}

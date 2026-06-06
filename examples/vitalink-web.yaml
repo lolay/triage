@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/triage.schema.json
 # vitalink-web — Node/pnpm web app (fictional).
 #
 # Exercises: version_from (.nvmrc), one_of (pnpm OR npm), severity: warn, and

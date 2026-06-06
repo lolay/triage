@@ -7,22 +7,24 @@ import (
 	"github.com/lolay/triage/internal/engine"
 )
 
-// JSONReport is the top-level structure for --json output.
+// JSONReport is the top-level structure for --json output (spec §7.3).
 type JSONReport struct {
 	Profile string       `json:"profile"`
 	Results []JSONResult `json:"results"`
 	Summary JSONSummary  `json:"summary"`
 }
 
-// JSONResult represents a single check outcome.
+// JSONResult represents one check outcome in the machine-readable report.
+// Shape per spec §7.3: group, name, severity, status, detail.
 type JSONResult struct {
-	Label    string `json:"label"`
-	Pass     bool   `json:"pass"`
-	Severity string `json:"severity,omitempty"`
-	Message  string `json:"message,omitempty"`
+	Group    string `json:"group,omitempty"`
+	Name     string `json:"name"`
+	Severity string `json:"severity"`
+	Status   string `json:"status"` // "pass" | "fail" | "warn" | "info"
+	Detail   string `json:"detail,omitempty"`
 }
 
-// JSONSummary holds aggregate pass/warn/error counts.
+// JSONSummary holds aggregate counts.
 type JSONSummary struct {
 	OK       int `json:"ok"`
 	Warnings int `json:"warnings"`
@@ -44,11 +46,15 @@ func buildJSONReport(profile string, results []engine.Result) JSONReport {
 	}
 	for _, r := range results {
 		jr.Results = append(jr.Results, JSONResult{
-			Label:    r.Label,
-			Pass:     r.Pass,
+			Group:    r.Group,
+			Name:     r.Label,
 			Severity: severityString(r.Severity),
-			Message:  r.Message,
+			Status:   statusString(r),
+			Detail:   r.Message,
 		})
+		if r.Kind == engine.KindHeader {
+			continue // don't count headers in the summary
+		}
 		if r.Pass {
 			jr.Summary.OK++
 		} else {
@@ -61,6 +67,23 @@ func buildJSONReport(profile string, results []engine.Result) JSONReport {
 		}
 	}
 	return jr
+}
+
+func statusString(r engine.Result) string {
+	if r.Pass {
+		if r.Severity == engine.SeverityInfo {
+			return "info"
+		}
+		return "pass"
+	}
+	switch r.Severity {
+	case engine.SeverityWarn:
+		return "warn"
+	case engine.SeverityInfo:
+		return "info"
+	default:
+		return "fail"
+	}
 }
 
 func severityString(s engine.Severity) string {

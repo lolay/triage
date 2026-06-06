@@ -1,6 +1,19 @@
 // Package report renders check results for humans and machines.
 //
-// m1 ships the skeletons: a human board (header + summary line) and a --json
-// reporter (struct + encoder). Group nesting, in-flight pending lines, and the
-// delegate tree (spec §7.2) are deferred to m2.
+// m2 ships the full rendering layer (spec §7.2–§7.3):
+//   - Board: static human board — structural group headers with the worst-status
+//     glyph, indented children, non-pass lines with hints inline, trailing
+//     summary line, and the read-only "To fix, run:" remediation block.
+//     ANSI color is gated on opts.IsTTY && !opts.NoColor.
+//   - Sink: output interface with StaticSink (non-TTY, buffers nothing —
+//     delegates to Board at End) and TTYSink (streaming, prints each line as
+//     it arrives). The CLI chooses based on term.IsTerminal.
+//   - JSON: machine-readable report aligned to spec §7.3 shape
+//     (group, name, severity, status, detail).
+//   - Glyphs: [✓] pass · [✗] error · [!] warn · [ℹ] info.
+//   - Legacy `group:` string field on a check synthesises flat section headers
+//     at render time; structural `group` containers (KindHeader results) are
+//     preferred.
+//
+// Delegate-tree rendering (m5) and async TTY pending/back-update are deferred.
 package report
