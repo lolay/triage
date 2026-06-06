@@ -1,0 +1,17 @@
+# Build output
+/bin/
+/dist/
+
+# triage runtime artifacts (--command-log default lives here; overwritten each run)
+/.triage/
+
+# Go test / coverage output
+*.out
+*.test
+coverage.*
+
+# Scratch space for drafts and spikes (not committed)
+/.scratch/
+
+# OS / editor cruft
+.DS_Store

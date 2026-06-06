@@ -1,0 +1,57 @@
+# goreleaser configuration (v2 schema) — m1 STUB.
+#
+# Defines the cross-platform build matrix (darwin/linux × amd64/arm64) and
+# stamps the same internal/buildinfo vars the Makefile does, so `goreleaser
+# check` and `goreleaser build --snapshot` (make snapshot) work locally.
+#
+# Publishing is intentionally disabled here: the Homebrew tap, archives wiring,
+# signing, and the GitHub release are added in m4. Until then this only
+# validates and builds snapshots — it never publishes.
+version: 2
+
+project_name: triage
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: triage
+    main: ./cmd/triage
+    binary: triage
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/lolay/triage/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/lolay/triage/internal/buildinfo.Commit={{ .Commit }}
+      - -X github.com/lolay/triage/internal/buildinfo.Date={{ .Date }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: triage
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot-{{ .ShortCommit }}"
+
+changelog:
+  sort: asc
+
+# No publishing until m4 (tap + signed release). Keeps `goreleaser release`
+# from creating a GitHub release while the stub is in place.
+release:
+  disable: true

@@ -1,0 +1,21 @@
+# golangci-lint configuration (v2 schema). Baseline for the triage CLI.
+#
+# Kept intentionally small in m1: the v2 "standard" set (errcheck, govet,
+# ineffassign, staticcheck, unused) plus misspell, with gofmt/goimports as
+# formatters. `make lint` runs this when golangci-lint is installed; CI always
+# runs it. Tighten as the codebase grows.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - misspell
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/lolay/triage

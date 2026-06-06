@@ -1,0 +1,54 @@
+# CI gate: humans, agents, and CI all run `make ci`, so a green local gate
+# matches CI. A separate job validates the goreleaser stub via `goreleaser
+# check` (no publish — release wiring lands in m4).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: build · lint · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: .go-version
+          cache: true
+          cache-dependency-path: go.mod
+
+      # `make lint` runs golangci-lint when present; install the pinned binary
+      # so CI enforces the full linter (the local gate skips it gracefully).
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.12.2/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.12.2
+
+      - name: make ci
+        run: make ci
+
+  release-check:
+    name: goreleaser check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: .go-version
+          cache: true
+          cache-dependency-path: go.mod
+
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: check
