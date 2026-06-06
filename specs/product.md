@@ -437,7 +437,7 @@ default:
 - **`triage-<name>` plugins (git-style)** — `triage` discovers executables named
   `triage-secrets`, `triage-profiles`, … on `PATH` and runs them in-process.
   Repo-specific readiness can also be reached via `command:` + `dir:` (e.g.
-  `make secrets-doctor`) or a plugin wrapper — m5 validates both paths.
+  `make secrets-doctor`) or a plugin wrapper — m4 validates both paths.
 
 ## 7. Severity, output & the hint-vs-fix ladder
 
@@ -738,7 +738,13 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 - s2 — [exec] `command` escape hatch (explicit interpreter + `platform` guard, **no implicit shell**); subprocess I/O: stream-to-discard default, bounded assertion scan, `--command-log` tee, `--verbose` stderr replay (§5)
 - s3 — [exec] Validate complex real-world checks in config (Xcode path/version, keychain certs, `xcrun`, virtualenv paths) against golden fixtures
 
-### m4 — Release & distribution
+### m4 — Delegation & plugins
+
+- s1 — [deep] `delegate` check type + recursive nesting (checks list order, pass/fail per child)
+- s2 — [exec] Delegate tree renderer: nested board under pending summary line, stream child lines as they complete (extends §7.2 pending renderer)
+- s3 — [exec] `triage-<name>` PATH-plugin discovery + contract; golden fixtures for `examples/` workspace/delegate shapes
+
+### m5 — Release & distribution
 
 - s1 — [exec] `goreleaser` build matrix (macOS+Linux × arm64/x64 for v1) + GitHub
   release assets + manpage; release pipeline promotes **floating git tags**
@@ -747,12 +753,6 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 - s3 — [fast] `curl | sh` installer (optional convenience alongside tap + release assets)
 - s4 — [fast] Lightweight update banner: cached GitHub `releases/latest` check,
   one-liner above board, `TRIAGE_NO_UPDATE_CHECK` / `--no-update-check` (§7.2)
-
-### m5 — Delegation & plugins
-
-- s1 — [deep] `delegate` check type + recursive nesting (checks list order, pass/fail per child)
-- s2 — [exec] Delegate tree renderer: nested board under pending summary line, stream child lines as they complete (extends §7.2 pending renderer)
-- s3 — [exec] `triage-<name>` PATH-plugin discovery + contract; golden fixtures for `examples/` workspace/delegate shapes
 
 ### m6 — GitHub Action (`lolay/triage-action`)
 
@@ -775,7 +775,7 @@ assets** — not from the action repo's tag contents.
 
 | Repo | What tags version |
 | --- | --- |
-| **`lolay/triage`** | Go CLI — source + goreleaser binaries (m4) |
+| **`lolay/triage`** | Go CLI — source + goreleaser binaries (m5) |
 | **`lolay/triage-action`** | Composite action wrapper only (m6) |
 
 **Coordination:** ship matching semver together (e.g. CLI `v0.3.1` on `lolay/triage`
@@ -795,7 +795,7 @@ download `triage_0.3.1_…` from `lolay/triage` releases). Optional input
 | `v0` | **Retagged** to latest `0.x` (optional) |
 
 Promote `v0.3` / `v0` in the **triage-action** release workflow when `v0.3.1`
-ships. **`lolay/triage`** has its own floating tags for CLI/tap consumers (m4).
+ships. **`lolay/triage`** has its own floating tags for CLI/tap consumers (m5).
 
 **Consumer guidance:**
 
@@ -887,7 +887,7 @@ go.mod, .go-version     Go module + pinned toolchain
 Makefile                single source of truth for build verbs (see below)
 cmd/triage, internal/   CLI + check engine
 schema/triage.schema.json   JSON Schema for editor validation
-.github/workflows/      ci, release (m1/m4); renovate optional
+.github/workflows/      ci, release (m1/m5); renovate optional
 .github/CODEOWNERS      @GaryRudolph (default owner for all paths)
 ```
 
@@ -924,7 +924,7 @@ settled (don't re-litigate; section refs in parens):
 the owner runs before restarting; this spec already reads as `triage`.
 - **Language:** Go (§3).
 - **Distribution:** Apache-2.0; build from source via root Makefile (always);
-dedicated Homebrew tap + release binaries (m4); sibling `lolay/triage-action` for
+dedicated Homebrew tap + release binaries (m5); sibling `lolay/triage-action` for
 CI + Marketplace (m6);
 `go install` deferred (m7); scoop/winget later (§3, §11).
 - **Native Windows:** designed-for now (no implicit shell), shipped in m7 (§3).
@@ -962,7 +962,7 @@ warnings don't break the build (§8).
 - **`.github/`:** workflows + CODEOWNERS only; no issue/PR templates (§11).
 - **Update check:** cached GitHub `releases/latest` vs build version; one-liner +
 `brew upgrade triage` hint; skip CI/`--json`/non-TTY/dev builds;
-`TRIAGE_NO_UPDATE_CHECK` / `--no-update-check` (§7.2, m4).
+`TRIAGE_NO_UPDATE_CHECK` / `--no-update-check` (§7.2, m5).
 - **Output filter:** v1 = `--quiet` only; `--only` (severity/group) deferred to m7
 (§7.3).
 
