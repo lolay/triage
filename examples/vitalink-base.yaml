@@ -1,0 +1,13 @@
+# vitalink-base.yaml — shared checks every Vitalink repo wants.
+#
+# Vitalink is a fictional health-tech company used only to demonstrate triage;
+# it is not a real project. Included files follow the same rules: checks under
+# profile keys only (here, default).
+
+default:
+  - tool: git
+    group: Core
+    hint: "https://git-scm.com (or: xcode-select --install)"
+  - tool: gh
+    group: Core
+    hint: https://cli.github.com

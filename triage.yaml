@@ -1,0 +1,35 @@
+# triage.yaml — triage checks its own dev environment (dogfooding).
+#
+# Run `make doctor` (→ `triage`) in this repo and you should get a clean
+# board on a set-up machine. `make doctor MODE=release` additionally checks the
+# tooling needed to cut a release.
+#
+# Canonical location: repo root. See specs/product.md §4 for the full schema and
+# examples/ for (fictional) configs exercising every feature.
+
+default:
+  - tool: git
+    group: Core
+    hint: https://git-scm.com
+  - tool: go
+    group: Toolchain
+    version_from: .go-version
+    hint: https://go.dev/dl
+  - tool: golangci-lint
+    group: Lint
+    severity: warn
+    hint: brew install golangci-lint
+
+release:
+  extends: [default]
+  add:
+    - tool: gh
+      group: Release
+      hint: https://cli.github.com
+    - tool: goreleaser
+      group: Release
+      hint: brew install goreleaser
+    - tool: cosign
+      group: Release
+      severity: warn
+      hint: brew install cosign

@@ -1,0 +1,17 @@
+# vitalink-infra — Terraform (fictional).
+#
+# Exercises: version_from (.terraform-version) and a release profile that adds
+# nothing but stays selectable.
+
+include:
+  - vitalink-base.yaml
+
+default:
+  - tool: terraform
+    group: Toolchain
+    version_from: .terraform-version
+    hint: https://developer.hashicorp.com/terraform/install
+
+release:
+  extends: [default]
+  add: []   # selectable release profile; same checks as default

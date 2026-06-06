@@ -1,0 +1,15 @@
+# vitalink-workspace — the estate root (fictional). Spec §5:
+# delegate is a check type — peers in the profile list, run in order.
+
+default:
+  - tool: make
+    group: Workspace
+    hint: xcode-select --install
+  - command: make doctor MODE={{profile}}
+    label: vitalink-web
+    dir: vitalink-web
+    group: Members
+  - delegate: vitalink-api
+    dir: vitalink-api
+  - delegate: vitalink-infra
+    dir: vitalink-infra

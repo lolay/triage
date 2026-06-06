@@ -1,0 +1,77 @@
+# otoscope-mac — macOS Swift app (fictional). Stress test for command / platform /
+# path / one_of / structural group containers, modeled on Apple signing +
+# asset-publishing toolchain.
+#
+# Otoscope is a fictional product name used only for this example.
+#
+# Exercises: tool, env, path, one_of (heterogeneous), command (+ contains /
+# matches + platform guard), structural group (+ items:), severity: warn,
+# profile inheritance. (delegate lives in vitalink-workspace.yaml.)
+
+include:
+  - vitalink-base.yaml
+
+default:
+  - group: Toolchain
+    items:
+      - tool: xcodegen
+        hint: brew install xcodegen
+      - tool: xcbeautify
+        hint: brew install xcbeautify
+      - tool: swift
+        hint: install Xcode 26+
+      - tool: swiftlint
+        hint: brew install swiftlint
+      - tool: jq
+        hint: brew install jq
+      - tool: swiftformat
+        severity: warn
+        hint: brew install swiftformat
+  - group: Xcode
+    platform: macos
+    items:
+      - command: xcode-select -p
+        label: Xcode selected (not CommandLineTools)
+        contains: Xcode
+        hint: sudo xcode-select --switch /Applications/Xcode.app
+      - command: xcodebuild -version
+        label: Xcode 26+
+        matches: "Xcode (2[6-9]|[3-9][0-9])"
+        hint: install Xcode 26+
+
+release:
+  extends: [default]
+  add:
+    - group: Secrets tooling
+      items:
+        - tool: sops
+          hint: brew install sops
+        - tool: age
+          hint: brew install age
+    - group: Asset packs
+      items:
+        - tool: python3
+          hint: gates the model-conversion step
+        - path: .venv-models
+          hint: python -m venv .venv-models
+        - command: xcrun --find altool
+          label: xcrun altool
+          platform: macos
+          hint: install Xcode 26
+    - group: Signing identities
+      platform: macos
+      items:
+        - command: security find-identity -v -p codesigning
+          label: Apple Distribution certificate
+          contains: Apple Distribution
+          hint: import the distribution cert into your keychain
+    - group: Secrets
+      items:
+        - one_of:
+            - env: SOPS_AGE_KEY
+            - env: SOPS_AGE_KEY_FILE
+            - path: ~/.config/sops/age/keys.txt
+          label: age identity available
+          hint: set SOPS_AGE_KEY or create ~/.config/sops/age/keys.txt
+        - path: "secrets/*.env.age"
+          hint: seal your env files first

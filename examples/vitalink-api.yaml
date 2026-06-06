@@ -1,0 +1,25 @@
+# vitalink-api — Go service (fictional).
+#
+# Exercises: include (shared base), version_from (read .go-version), profile
+# inheritance, and a deploy auth/session check (logged in AND not expired).
+
+include:
+  - vitalink-base.yaml
+
+default:
+  - tool: go
+    group: Toolchain
+    version_from: .go-version
+    hint: https://go.dev/dl
+
+release:
+  extends: [default]
+  add:
+    - tool: gcloud
+      group: Deploy
+      hint: https://cloud.google.com/sdk/docs/install
+    - command: gcloud auth print-access-token
+      label: gcloud logged in (token valid, not expired)
+      group: Deploy
+      platform: [macos, linux]
+      hint: gcloud auth login

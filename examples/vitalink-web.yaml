@@ -1,0 +1,40 @@
+# vitalink-web — Node/pnpm web app (fictional).
+#
+# Exercises: version_from (.nvmrc), one_of (pnpm OR npm), severity: warn, and
+# firebase + gcloud auth/session checks in the release profile.
+
+include:
+  - vitalink-base.yaml
+
+default:
+  - tool: node
+    group: Toolchain
+    version_from: .nvmrc
+    hint: https://nodejs.org (see .nvmrc)
+  - one_of: [pnpm, npm]
+    group: Toolchain
+    hint: corepack enable && corepack prepare pnpm@latest --activate
+  - tool: biome
+    group: Lint
+    severity: warn
+    hint: pnpm add -D @biomejs/biome
+
+release:
+  extends: [default]
+  add:
+    - tool: firebase
+      group: Deploy
+      hint: npm install -g firebase-tools
+    - command: firebase login:list
+      label: firebase authenticated
+      group: Deploy
+      contains: "@"
+      hint: firebase login
+    - tool: gcloud
+      group: Deploy
+      hint: https://cloud.google.com/sdk/docs/install
+    - command: gcloud auth print-access-token
+      label: gcloud logged in (token valid, not expired)
+      group: Deploy
+      platform: [macos, linux]
+      hint: gcloud auth login
