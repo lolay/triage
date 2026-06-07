@@ -4,8 +4,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/lolay/triage/internal/config"
 )
@@ -13,23 +15,20 @@ import (
 func TestExpand_HitAndWhitespace(t *testing.T) {
 	vars := map[string]string{"region": "us-west-2", "x": "y"}
 	got, err := expand("prefix {{ region }} suffix", vars)
-	if err != nil || got != "prefix us-west-2 suffix" {
-		t.Errorf("expand = %q, err = %v", got, err)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "prefix us-west-2 suffix", got)
 }
 
 func TestExpand_UnknownVar(t *testing.T) {
 	_, err := expand("{{ missing }}", map[string]string{})
-	if err == nil || !strings.Contains(err.Error(), "missing") {
-		t.Errorf("want unknown var error, got %v", err)
-	}
+	require.Error(t, err, "want unknown var error")
+	assert.ErrorContains(t, err, "missing")
 }
 
 func TestExpand_EmptyNoOp(t *testing.T) {
 	got, err := expand("", nil)
-	if err != nil || got != "" {
-		t.Errorf("empty expand = %q, err = %v", got, err)
-	}
+	require.NoError(t, err)
+	assert.Empty(t, got)
 }
 
 func TestExpand_MalformedTokensFail(t *testing.T) {
@@ -46,11 +45,9 @@ func TestExpand_MalformedTokensFail(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := expand(tc.in, vars); err == nil {
-				t.Errorf("expand(%q) = nil error, want malformed-template error", tc.in)
-			} else if !strings.Contains(err.Error(), "malformed template") {
-				t.Errorf("expand(%q) error = %v, want malformed-template error", tc.in, err)
-			}
+			_, err := expand(tc.in, vars)
+			require.Errorf(t, err, "expand(%q) should fail with a malformed-template error", tc.in)
+			assert.ErrorContains(t, err, "malformed template")
 		})
 	}
 }
@@ -58,9 +55,8 @@ func TestExpand_MalformedTokensFail(t *testing.T) {
 func TestExpand_ValidAmongLiteralBraces(t *testing.T) {
 	// A well-formed token next to non-template single braces still resolves.
 	got, err := expand("a{b {{ ok }} c}", map[string]string{"ok": "v"})
-	if err != nil || got != "a{b v c}" {
-		t.Errorf("expand = %q, err = %v", got, err)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "a{b v c}", got)
 }
 
 func TestExpandCheck_AllFields(t *testing.T) {
@@ -80,12 +76,9 @@ func TestExpandCheck_AllFields(t *testing.T) {
 		WithEnv:    map[string]string{"K": "{{ v }}"},
 	}
 	out, err := expandCheck(c, vars)
-	if err != nil {
-		t.Fatalf("expandCheck: %v", err)
-	}
-	if out.Value != "expanded" || out.WithEnv["K"] != "expanded" {
-		t.Errorf("expandCheck incomplete: %+v", out)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "expanded", out.Value, "expandCheck incomplete: %+v", out)
+	assert.Equal(t, "expanded", out.WithEnv["K"], "expandCheck incomplete: %+v", out)
 }
 
 func TestRunner_VarInToolName(t *testing.T) {
@@ -94,34 +87,28 @@ func TestRunner_VarInToolName(t *testing.T) {
 		LookPath:   fakeLookPath("git"),
 	})
 	results := r.Run(config.Profile{{Type: config.TypeTool, Value: "{{ tool_name }}"}})
-	if len(results) != 1 || !results[0].Pass {
-		t.Errorf("want pass for expanded tool name: %+v", results)
-	}
+	require.Len(t, results, 1, "want 1 result: %+v", results)
+	assert.True(t, results[0].Pass, "want pass for expanded tool name: %+v", results)
 }
 
 func TestRunner_VarInPath(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "present.txt")
-	if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(f, []byte("x"), 0o644))
 	r := NewRunnerWith(RunnerOpts{
 		ConfigVars: map[string]string{"fname": "present.txt"},
 		BaseDir:    dir,
 	})
 	results := r.Run(config.Profile{{Type: config.TypePath, Value: "{{ fname }}"}})
-	if len(results) != 1 || !results[0].Pass {
-		t.Errorf("want pass for expanded path: %+v", results)
-	}
+	require.Len(t, results, 1, "want 1 result: %+v", results)
+	assert.True(t, results[0].Pass, "want pass for expanded path: %+v", results)
 }
 
 func TestRunner_VarInCommand(t *testing.T) {
 	r := NewRunnerWith(RunnerOpts{
 		ConfigVars: map[string]string{"region": "us-west-2"},
 		RunCommand: func(_ context.Context, _, script, _ string, _ map[string]string) (string, int, error) {
-			if script != "echo us-west-2" {
-				t.Errorf("script = %q", script)
-			}
+			assert.Equal(t, "echo us-west-2", script)
 			return "us-west-2\n", 0, nil
 		},
 	})
@@ -131,39 +118,30 @@ func TestRunner_VarInCommand(t *testing.T) {
 		Label:    "region",
 		Contains: "us-west-2",
 	}})
-	if len(results) != 1 || !results[0].Pass {
-		t.Errorf("want pass: %+v", results)
-	}
+	require.Len(t, results, 1, "want 1 result: %+v", results)
+	assert.True(t, results[0].Pass, "want pass: %+v", results)
 }
 
 func TestRunner_ProfileBuiltinInPath(t *testing.T) {
 	dir := t.TempDir()
 	sub := filepath.Join(dir, "release")
-	if err := os.Mkdir(sub, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Mkdir(sub, 0o755))
 	r := NewRunnerWith(RunnerOpts{
 		Profile: "release",
 		BaseDir: dir,
 	})
 	results := r.Run(config.Profile{{Type: config.TypePath, Value: "{{ profile }}"}})
-	if len(results) != 1 || !results[0].Pass {
-		t.Errorf("want pass for {{ profile }} path dir: %+v", results)
-	}
+	require.Len(t, results, 1, "want 1 result: %+v", results)
+	assert.True(t, results[0].Pass, "want pass for {{ profile }} path dir: %+v", results)
 }
 
 func TestRunner_UnknownVarFails(t *testing.T) {
 	r := NewRunner()
 	results := r.Run(config.Profile{{Type: config.TypeTool, Value: "{{ undefined_var }}"}})
-	if len(results) != 1 || results[0].Pass {
-		t.Errorf("want failing result for unknown var: %+v", results)
-	}
-	if results[0].Severity != SeverityError {
-		t.Errorf("severity = %v, want Error", results[0].Severity)
-	}
-	if !strings.Contains(results[0].Message, "undefined_var") {
-		t.Errorf("message = %q", results[0].Message)
-	}
+	require.Len(t, results, 1, "want failing result for unknown var: %+v", results)
+	assert.False(t, results[0].Pass, "want failing result for unknown var: %+v", results)
+	assert.Equal(t, SeverityError, results[0].Severity)
+	assert.Contains(t, results[0].Message, "undefined_var")
 }
 
 func TestEffectiveVars_BuiltinsWin(t *testing.T) {
@@ -173,7 +151,6 @@ func TestEffectiveVars_BuiltinsWin(t *testing.T) {
 		GOOS:       "linux",
 	})
 	ev := r.effectiveVars()
-	if ev["profile"] != "release" || ev["os"] != "linux" {
-		t.Errorf("built-ins should win: %#v", ev)
-	}
+	assert.Equal(t, "release", ev["profile"], "built-ins should win: %#v", ev)
+	assert.Equal(t, "linux", ev["os"], "built-ins should win: %#v", ev)
 }

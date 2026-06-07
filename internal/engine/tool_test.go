@@ -3,8 +3,10 @@ package engine
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/lolay/triage/internal/config"
 )
@@ -46,106 +48,70 @@ func opts(found []string, probeOutputs map[string]string) RunnerOpts {
 func TestCheckTool_Present_NoConstraint(t *testing.T) {
 	r := checkTool(t.Context(), "git", "", "https://git-scm.com",
 		opts([]string{"git"}, nil))
-	if !r.Pass {
-		t.Errorf("want pass, got fail: %s", r.Message)
-	}
-	if r.Label != "git" {
-		t.Errorf("label = %q, want git", r.Label)
-	}
+	assert.True(t, r.Pass, "want pass, got fail: %s", r.Message)
+	assert.Equal(t, "git", r.Label)
 }
 
 func TestCheckTool_Missing(t *testing.T) {
 	r := checkTool(t.Context(), "notfound", "", "install it",
 		opts(nil, nil))
-	if r.Pass {
-		t.Errorf("want fail, got pass")
-	}
-	if !strings.Contains(r.Message, "not found") {
-		t.Errorf("message = %q, want 'not found'", r.Message)
-	}
-	if !strings.Contains(r.Message, "install it") {
-		t.Errorf("hint missing from message: %q", r.Message)
-	}
+	assert.False(t, r.Pass, "want fail, got pass")
+	assert.Contains(t, r.Message, "not found")
+	assert.Contains(t, r.Message, "install it", "hint missing from message")
 }
 
 func TestCheckTool_Missing_NoHint(t *testing.T) {
 	r := checkTool(t.Context(), "notfound", "", "",
 		opts(nil, nil))
-	if r.Pass {
-		t.Errorf("want fail")
-	}
-	if strings.Contains(r.Message, " — ") {
-		t.Errorf("no hint: message should not contain ' — ': %q", r.Message)
-	}
+	assert.False(t, r.Pass, "want fail")
+	assert.NotContains(t, r.Message, " — ", "no hint: message should not contain ' — '")
 }
 
 func TestCheckTool_VersionPass(t *testing.T) {
 	r := checkTool(t.Context(), "mytool", ">=1.2.0", "upgrade mytool",
 		opts([]string{"mytool"}, map[string]string{"mytool": "mytool version 1.3.0"}))
-	if !r.Pass {
-		t.Errorf("want pass, got: %s", r.Message)
-	}
-	if !strings.Contains(r.Message, "1.3.0") {
-		t.Errorf("message should contain found version: %q", r.Message)
-	}
+	assert.True(t, r.Pass, "want pass, got: %s", r.Message)
+	assert.Contains(t, r.Message, "1.3.0", "message should contain found version")
 }
 
 func TestCheckTool_VersionFail(t *testing.T) {
 	r := checkTool(t.Context(), "mytool", ">=2.0.0", "upgrade mytool",
 		opts([]string{"mytool"}, map[string]string{"mytool": "mytool version 1.9.0"}))
-	if r.Pass {
-		t.Errorf("want fail (version too old)")
-	}
-	if !strings.Contains(r.Message, "1.9.0") {
-		t.Errorf("should mention found version: %q", r.Message)
-	}
-	if !strings.Contains(r.Message, ">=2.0.0") {
-		t.Errorf("should mention required constraint: %q", r.Message)
-	}
+	assert.False(t, r.Pass, "want fail (version too old)")
+	assert.Contains(t, r.Message, "1.9.0", "should mention found version")
+	assert.Contains(t, r.Message, ">=2.0.0", "should mention required constraint")
 }
 
 func TestCheckTool_GoVersionOverride(t *testing.T) {
 	r := checkTool(t.Context(), "go", ">=1.21.0", "",
 		opts([]string{"go"}, map[string]string{"go": "go version go1.26.3 linux/amd64"}))
-	if !r.Pass {
-		t.Errorf("go version override: want pass, got: %s", r.Message)
-	}
-	if !strings.Contains(r.Message, "1.26.3") {
-		t.Errorf("message should contain 1.26.3: %q", r.Message)
-	}
+	assert.True(t, r.Pass, "go version override: want pass, got: %s", r.Message)
+	assert.Contains(t, r.Message, "1.26.3", "message should contain 1.26.3")
 }
 
 func TestCheckTool_GoVersionFail(t *testing.T) {
 	r := checkTool(t.Context(), "go", ">=1.30.0", "install newer go",
 		opts([]string{"go"}, map[string]string{"go": "go version go1.26.3 linux/amd64"}))
-	if r.Pass {
-		t.Errorf("want fail: 1.26.3 < 1.30.0")
-	}
+	assert.False(t, r.Pass, "want fail: 1.26.3 < 1.30.0")
 }
 
 func TestCheckTool_UnparseableVersion(t *testing.T) {
 	r := checkTool(t.Context(), "mytool", ">=1.0.0", "",
 		opts([]string{"mytool"}, map[string]string{"mytool": "no version info here"}))
-	if r.Pass {
-		t.Errorf("want fail when version cannot be parsed")
-	}
+	assert.False(t, r.Pass, "want fail when version cannot be parsed")
 }
 
 func TestCheckTool_NodeLeadingV(t *testing.T) {
 	r := checkTool(t.Context(), "node", ">=18.0.0", "",
 		opts([]string{"node"}, map[string]string{"node": "v20.11.0"}))
-	if !r.Pass {
-		t.Errorf("node v20.11.0 should satisfy >=18.0.0: %s", r.Message)
-	}
+	assert.True(t, r.Pass, "node v20.11.0 should satisfy >=18.0.0: %s", r.Message)
 }
 
 // ── runner integration ────────────────────────────────────────────────────────
 
 func TestRunner_EmptyProfile(t *testing.T) {
 	r := NewRunner().Run(config.Profile{})
-	if len(r) != 0 {
-		t.Errorf("want 0 results, got %d", len(r))
-	}
+	assert.Empty(t, r, "want 0 results")
 }
 
 func TestRunner_ToolPresent(t *testing.T) {
@@ -153,15 +119,9 @@ func TestRunner_ToolPresent(t *testing.T) {
 	results := runner.Run(config.Profile{
 		{Type: config.TypeTool, Value: "git", Hint: "https://git-scm.com"},
 	})
-	if len(results) != 1 {
-		t.Fatalf("want 1 result, got %d", len(results))
-	}
-	if !results[0].Pass {
-		t.Errorf("want pass: %s", results[0].Message)
-	}
-	if results[0].Depth != 0 {
-		t.Errorf("depth = %d, want 0", results[0].Depth)
-	}
+	require.Len(t, results, 1)
+	assert.True(t, results[0].Pass, "want pass: %s", results[0].Message)
+	assert.Equal(t, 0, results[0].Depth)
 }
 
 func TestRunner_ToolMissing(t *testing.T) {
@@ -169,12 +129,9 @@ func TestRunner_ToolMissing(t *testing.T) {
 	results := runner.Run(config.Profile{
 		{Type: config.TypeTool, Value: "missing", Hint: "install missing"},
 	})
-	if results[0].Pass {
-		t.Errorf("want fail")
-	}
-	if results[0].Severity != SeverityError {
-		t.Errorf("severity = %v, want Error", results[0].Severity)
-	}
+	require.Len(t, results, 1)
+	assert.False(t, results[0].Pass, "want fail")
+	assert.Equal(t, SeverityError, results[0].Severity)
 }
 
 func TestRunner_SeverityWarn(t *testing.T) {
@@ -182,9 +139,8 @@ func TestRunner_SeverityWarn(t *testing.T) {
 	results := runner.Run(config.Profile{
 		{Type: config.TypeTool, Value: "optional", Severity: "warn", Hint: "brew install optional"},
 	})
-	if results[0].Severity != SeverityWarn {
-		t.Errorf("severity = %v, want Warn", results[0].Severity)
-	}
+	require.Len(t, results, 1)
+	assert.Equal(t, SeverityWarn, results[0].Severity)
 }
 
 func TestRunner_RequiredFalse(t *testing.T) {
@@ -193,9 +149,8 @@ func TestRunner_RequiredFalse(t *testing.T) {
 	results := runner.Run(config.Profile{
 		{Type: config.TypeTool, Value: "opt", Required: &boolFalse},
 	})
-	if results[0].Severity != SeverityWarn {
-		t.Errorf("required:false should map to Warn, got %v", results[0].Severity)
-	}
+	require.Len(t, results, 1)
+	assert.Equal(t, SeverityWarn, results[0].Severity, "required:false should map to Warn")
 }
 
 func TestRunner_Group(t *testing.T) {
@@ -211,21 +166,11 @@ func TestRunner_Group(t *testing.T) {
 		},
 	})
 	// [header, git, go]
-	if len(results) != 3 {
-		t.Fatalf("want 3 results (header + 2 leaves), got %d", len(results))
-	}
-	if results[0].Kind != KindHeader {
-		t.Errorf("results[0] should be KindHeader")
-	}
-	if results[0].Label != "Toolchain" {
-		t.Errorf("header label = %q", results[0].Label)
-	}
-	if !results[0].Pass {
-		t.Errorf("group header should pass when all children pass")
-	}
-	if results[1].Depth != 1 {
-		t.Errorf("child depth = %d, want 1", results[1].Depth)
-	}
+	require.Len(t, results, 3, "want 3 results (header + 2 leaves)")
+	assert.Equal(t, KindHeader, results[0].Kind, "results[0] should be KindHeader")
+	assert.Equal(t, "Toolchain", results[0].Label)
+	assert.True(t, results[0].Pass, "group header should pass when all children pass")
+	assert.Equal(t, 1, results[1].Depth, "child depth")
 }
 
 func TestRunner_GroupFailsWhenChildFails(t *testing.T) {
@@ -240,12 +185,9 @@ func TestRunner_GroupFailsWhenChildFails(t *testing.T) {
 			},
 		},
 	})
-	if results[0].Pass {
-		t.Errorf("group header should fail when a child fails")
-	}
-	if results[0].Severity != SeverityError {
-		t.Errorf("header severity should be Error when child fails")
-	}
+	require.NotEmpty(t, results)
+	assert.False(t, results[0].Pass, "group header should fail when a child fails")
+	assert.Equal(t, SeverityError, results[0].Severity, "header severity should be Error when child fails")
 }
 
 func TestRunner_DelegateMissingChildFails(t *testing.T) {
@@ -255,16 +197,9 @@ func TestRunner_DelegateMissingChildFails(t *testing.T) {
 	results := runner.Run(config.Profile{
 		{Type: config.TypeDelegate, Value: "child", Dir: "does-not-exist"},
 	})
-	if len(results) != 1 {
-		t.Fatalf("want 1 result, got %d", len(results))
-	}
-	if results[0].Kind != KindLeaf {
-		t.Errorf("childless delegate failure should be a counted KindLeaf, got %v", results[0].Kind)
-	}
-	if results[0].Pass || results[0].Severity != SeverityError {
-		t.Errorf("missing child should fail with SeverityError: %+v", results[0])
-	}
-	if runner.Fatal() != nil {
-		t.Errorf("missing child is not a fatal config error: %v", runner.Fatal())
-	}
+	require.Len(t, results, 1)
+	assert.Equal(t, KindLeaf, results[0].Kind, "childless delegate failure should be a counted KindLeaf")
+	assert.False(t, results[0].Pass, "missing child should fail")
+	assert.Equal(t, SeverityError, results[0].Severity, "missing child should fail with SeverityError")
+	assert.NoError(t, runner.Fatal(), "missing child is not a fatal config error")
 }

@@ -1,11 +1,12 @@
 package config
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const minimalConfig = "default: []\n"
@@ -19,12 +20,8 @@ func TestDiscover_EachNameResolves(t *testing.T) {
 
 			// Directory argument.
 			cfg, err := Discover(dir)
-			if err != nil {
-				t.Fatalf("Discover(dir) with %s: %v", name, err)
-			}
-			if cfg == nil {
-				t.Fatalf("Discover(dir) returned nil config for %s", name)
-			}
+			require.NoError(t, err, "Discover(dir) with %s", name)
+			require.NotNil(t, cfg, "Discover(dir) returned nil config for %s", name)
 		})
 	}
 }
@@ -42,15 +39,9 @@ func TestDiscover_PrecedenceOrder(t *testing.T) {
 	// Remove from most-preferred to least, asserting the next-in-line wins.
 	for i, name := range configNames {
 		cfg, err := Discover(dir)
-		if err != nil {
-			t.Fatalf("Discover after removing %d: %v", i, err)
-		}
-		if got := cfg.Vars["picked"]; got != name {
-			t.Errorf("with %v present, picked %q, want %q", configNames[i:], got, name)
-		}
-		if err := os.Remove(filepath.Join(dir, name)); err != nil {
-			t.Fatalf("remove %s: %v", name, err)
-		}
+		require.NoErrorf(t, err, "Discover after removing %d", i)
+		assert.Equalf(t, name, cfg.Vars["picked"], "with %v present", configNames[i:])
+		require.NoErrorf(t, os.Remove(filepath.Join(dir, name)), "remove %s", name)
 	}
 }
 
@@ -58,9 +49,8 @@ func TestDiscover_PrecedenceOrder(t *testing.T) {
 func TestDiscover_ExplicitYmlFile(t *testing.T) {
 	dir := t.TempDir()
 	p := writeFile(t, dir, "custom.yml", minimalConfig)
-	if _, err := Discover(p); err != nil {
-		t.Fatalf("Discover(explicit .yml): %v", err)
-	}
+	_, err := Discover(p)
+	require.NoError(t, err, "Discover(explicit .yml)")
 }
 
 // A directory with none of the accepted names yields ErrNotFound, and the
@@ -68,12 +58,8 @@ func TestDiscover_ExplicitYmlFile(t *testing.T) {
 func TestDiscover_NotFoundListsAllNames(t *testing.T) {
 	dir := t.TempDir()
 	_, err := Discover(dir)
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("err = %v, want ErrNotFound", err)
-	}
+	require.ErrorIs(t, err, ErrNotFound)
 	for _, name := range configNames {
-		if !strings.Contains(err.Error(), name) {
-			t.Errorf("not-found message %q missing %q", err.Error(), name)
-		}
+		assert.Containsf(t, err.Error(), name, "not-found message missing %q", name)
 	}
 }

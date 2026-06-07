@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/lolay/triage/internal/cli"
 )
 
@@ -148,7 +151,7 @@ var e2eCases = []e2eCase{
 
 // TestGolden runs each fixture through ExecuteWith in-process, captures stdout,
 // and diffs against testdata/<name>/stdout.golden.
-// Pass -update to regenerate all golden files.
+// Pass -update to regenerate golden files.
 func TestGolden(t *testing.T) {
 	for _, tc := range e2eCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -162,9 +165,7 @@ func TestGolden(t *testing.T) {
 				binDir = "bin"
 			}
 			fakeBin, err := filepath.Abs(filepath.Join(fixtureDir, binDir))
-			if err != nil {
-				t.Fatalf("abs bin dir: %v", err)
-			}
+			require.NoError(t, err, "abs bin dir")
 			// Only prepend if the dir exists (empty-config / not-found have no bin/).
 			oldPath := os.Getenv("PATH")
 			if fi, err := os.Stat(fakeBin); err == nil && fi.IsDir() {
@@ -177,9 +178,7 @@ func TestGolden(t *testing.T) {
 			}
 			for _, k := range tc.unsetEnv {
 				prev, existed := os.LookupEnv(k)
-				if err := os.Unsetenv(k); err != nil {
-					t.Fatalf("Unsetenv(%q): %v", k, err)
-				}
+				require.NoErrorf(t, os.Unsetenv(k), "Unsetenv(%q)", k)
 				if existed {
 					t.Cleanup(func() { _ = os.Setenv(k, prev) })
 				} else {
@@ -194,15 +193,10 @@ func TestGolden(t *testing.T) {
 
 			if *update {
 				var stdout, stderr bytes.Buffer
-				if exitCode := cli.ExecuteWith(args, &stdout, &stderr); exitCode != tc.wantExit {
-					t.Errorf("exit code = %d, want %d\nstderr:\n%s", exitCode, tc.wantExit, stderr.String())
-				}
-				if err := os.MkdirAll(fixtureDir, 0o755); err != nil {
-					t.Fatalf("mkdir %s: %v", fixtureDir, err)
-				}
-				if err := os.WriteFile(goldenFile, stdout.Bytes(), 0o644); err != nil {
-					t.Fatalf("write golden %s: %v", goldenFile, err)
-				}
+				exitCode := cli.ExecuteWith(args, &stdout, &stderr)
+				assert.Equalf(t, tc.wantExit, exitCode, "exit code\nstderr:\n%s", stderr.String())
+				require.NoErrorf(t, os.MkdirAll(fixtureDir, 0o755), "mkdir %s", fixtureDir)
+				require.NoErrorf(t, os.WriteFile(goldenFile, stdout.Bytes(), 0o644), "write golden %s", goldenFile)
 				t.Logf("updated %s", goldenFile)
 				return
 			}
@@ -217,10 +211,8 @@ func TestGolden(t *testing.T) {
 					var stdout, stderr bytes.Buffer
 					exitCode := cli.ExecuteWith(runArgs, &stdout, &stderr)
 
-					if exitCode != tc.wantExit {
-						t.Errorf("exit code = %d, want %d\nstdout:\n%s\nstderr:\n%s",
-							exitCode, tc.wantExit, stdout.String(), stderr.String())
-					}
+					assert.Equalf(t, tc.wantExit, exitCode, "exit code at -j %d\nstdout:\n%s\nstderr:\n%s",
+						jobs, stdout.String(), stderr.String())
 
 					if tc.noGolden {
 						return
@@ -228,13 +220,9 @@ func TestGolden(t *testing.T) {
 
 					got := stdout.String()
 					wantBytes, err := os.ReadFile(goldenFile)
-					if err != nil {
-						t.Fatalf("read golden %s: %v\n(run: go test -run TestGolden -update)", goldenFile, err)
-					}
-					if want := string(wantBytes); got != want {
-						t.Errorf("stdout mismatch at -j %d\n--- want ---\n%s\n--- got ---\n%s\n--- diff ---\n%s",
-							jobs, want, got, lineDiff(got, want))
-					}
+					require.NoErrorf(t, err, "read golden %s\n(run: go test -run TestGolden -update)", goldenFile)
+					want := string(wantBytes)
+					assert.Equalf(t, want, got, "stdout mismatch at -j %d\n--- diff ---\n%s", jobs, lineDiff(got, want))
 				})
 			}
 		})
@@ -259,9 +247,8 @@ func TestJobsFlagValidation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			if got := cli.ExecuteWith(tc.args, &stdout, &stderr); got != tc.wantExit {
-				t.Errorf("exit = %d, want %d (stderr: %s)", got, tc.wantExit, stderr.String())
-			}
+			got := cli.ExecuteWith(tc.args, &stdout, &stderr)
+			assert.Equalf(t, tc.wantExit, got, "stderr: %s", stderr.String())
 		})
 	}
 }

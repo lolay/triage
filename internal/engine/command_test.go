@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/lolay/triage/internal/config"
 )
 
@@ -49,12 +52,9 @@ func TestCommand_ExitZeroPass(t *testing.T) {
 		Value: "true",
 		Label: "truthy",
 	}})
-	if len(results) != 1 || !results[0].Pass {
-		t.Errorf("want pass on exit 0: %+v", results)
-	}
-	if results[0].Label != "truthy" {
-		t.Errorf("label = %q, want 'truthy'", results[0].Label)
-	}
+	require.Len(t, results, 1, "want 1 result: %+v", results)
+	assert.True(t, results[0].Pass, "want pass on exit 0: %+v", results)
+	assert.Equal(t, "truthy", results[0].Label)
 }
 
 func TestCommand_ExitNonZeroFail(t *testing.T) {
@@ -65,15 +65,10 @@ func TestCommand_ExitNonZeroFail(t *testing.T) {
 		Label: "falsy",
 		Hint:  "fix it",
 	}})
-	if results[0].Pass {
-		t.Errorf("want fail on exit 1")
-	}
-	if !strings.Contains(results[0].Message, "exit 1") {
-		t.Errorf("message should mention exit code: %q", results[0].Message)
-	}
-	if !strings.Contains(results[0].Message, "fix it") {
-		t.Errorf("hint should appear in message: %q", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.False(t, results[0].Pass, "want fail on exit 1")
+	assert.Contains(t, results[0].Message, "exit 1", "message should mention exit code")
+	assert.Contains(t, results[0].Message, "fix it", "hint should appear in message")
 }
 
 func TestCommand_ExplicitExitCode_Pass(t *testing.T) {
@@ -85,9 +80,8 @@ func TestCommand_ExplicitExitCode_Pass(t *testing.T) {
 		Label: "special exit",
 		Exit:  &wantExit,
 	}})
-	if !results[0].Pass {
-		t.Errorf("want pass when exit matches expected %d: %s", wantExit, results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.True(t, results[0].Pass, "want pass when exit matches expected %d: %s", wantExit, results[0].Message)
 }
 
 func TestCommand_ExplicitExitCode_Fail(t *testing.T) {
@@ -99,9 +93,8 @@ func TestCommand_ExplicitExitCode_Fail(t *testing.T) {
 		Label: "needs exit 2",
 		Exit:  &wantExit,
 	}})
-	if results[0].Pass {
-		t.Errorf("want fail when exit doesn't match expected")
-	}
+	require.NotEmpty(t, results)
+	assert.False(t, results[0].Pass, "want fail when exit doesn't match expected")
 }
 
 // ── contains assertions ───────────────────────────────────────────────────────
@@ -116,9 +109,8 @@ func TestCommand_ContainsPass(t *testing.T) {
 		Label:    "Xcode installed",
 		Contains: "Xcode",
 	}})
-	if !results[0].Pass {
-		t.Errorf("want pass (stdout contains Xcode): %s", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.True(t, results[0].Pass, "want pass (stdout contains Xcode): %s", results[0].Message)
 }
 
 func TestCommand_ContainsFail(t *testing.T) {
@@ -132,15 +124,10 @@ func TestCommand_ContainsFail(t *testing.T) {
 		Contains: "Xcode",
 		Hint:     "switch to Xcode.app",
 	}})
-	if results[0].Pass {
-		t.Errorf("want fail (stdout lacks Xcode)")
-	}
-	if !strings.Contains(results[0].Message, "does not contain") {
-		t.Errorf("message should say does not contain: %q", results[0].Message)
-	}
-	if !strings.Contains(results[0].Message, "switch to Xcode.app") {
-		t.Errorf("hint should appear: %q", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.False(t, results[0].Pass, "want fail (stdout lacks Xcode)")
+	assert.Contains(t, results[0].Message, "does not contain", "message should say does not contain")
+	assert.Contains(t, results[0].Message, "switch to Xcode.app", "hint should appear")
 }
 
 // ── matches assertions ────────────────────────────────────────────────────────
@@ -155,9 +142,8 @@ func TestCommand_MatchesPass(t *testing.T) {
 		Label:   "Xcode 26+",
 		Matches: `Xcode (2[6-9]|[3-9][0-9])`,
 	}})
-	if !results[0].Pass {
-		t.Errorf("want pass — stdout matches Xcode 26+: %s", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.True(t, results[0].Pass, "want pass — stdout matches Xcode 26+: %s", results[0].Message)
 }
 
 func TestCommand_MatchesFail(t *testing.T) {
@@ -171,15 +157,10 @@ func TestCommand_MatchesFail(t *testing.T) {
 		Matches: `Xcode (2[6-9]|[3-9][0-9])`,
 		Hint:    "upgrade Xcode",
 	}})
-	if results[0].Pass {
-		t.Errorf("want fail — Xcode 15 doesn't match >=26")
-	}
-	if !strings.Contains(results[0].Message, "does not match") {
-		t.Errorf("message should say does not match: %q", results[0].Message)
-	}
-	if !strings.Contains(results[0].Message, "upgrade Xcode") {
-		t.Errorf("hint should appear: %q", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.False(t, results[0].Pass, "want fail — Xcode 15 doesn't match >=26")
+	assert.Contains(t, results[0].Message, "does not match", "message should say does not match")
+	assert.Contains(t, results[0].Message, "upgrade Xcode", "hint should appear")
 }
 
 func TestCommand_BadMatchesRegex(t *testing.T) {
@@ -190,12 +171,9 @@ func TestCommand_BadMatchesRegex(t *testing.T) {
 		Label:   "bad regex",
 		Matches: `[invalid`,
 	}})
-	if results[0].Pass {
-		t.Errorf("want fail on bad regex")
-	}
-	if !strings.Contains(results[0].Message, "invalid matches regex") {
-		t.Errorf("message should mention bad regex: %q", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.False(t, results[0].Pass, "want fail on bad regex")
+	assert.Contains(t, results[0].Message, "invalid matches regex", "message should mention bad regex")
 }
 
 // ── {{profile}} expansion ─────────────────────────────────────────────────────
@@ -210,9 +188,8 @@ func TestCommand_ProfileExpansion(t *testing.T) {
 		Value: "make doctor MODE={{profile}}",
 		Label: "doctor",
 	}})
-	if !results[0].Pass {
-		t.Errorf("want pass after {{profile}} expansion: %s", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.True(t, results[0].Pass, "want pass after {{profile}} expansion: %s", results[0].Message)
 }
 
 // ── interp selection ──────────────────────────────────────────────────────────
@@ -227,9 +204,8 @@ func TestCommand_InterpPwsh(t *testing.T) {
 		Label:  "date",
 		Interp: "pwsh",
 	}})
-	if !results[0].Pass {
-		t.Errorf("want pass with pwsh interp: %s", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.True(t, results[0].Pass, "want pass with pwsh interp: %s", results[0].Message)
 }
 
 // ── over-cap behavior ─────────────────────────────────────────────────────────
@@ -247,15 +223,10 @@ func TestCommand_OverCapFail(t *testing.T) {
 		Label:    "noisy",
 		Contains: "target",
 	}})
-	if results[0].Pass {
-		t.Errorf("want fail when output hits cap")
-	}
-	if !strings.Contains(results[0].Message, "exceeded") {
-		t.Errorf("message should mention exceeded cap: %q", results[0].Message)
-	}
-	if !strings.Contains(results[0].Message, "--command-log") {
-		t.Errorf("message should mention --command-log: %q", results[0].Message)
-	}
+	require.NotEmpty(t, results)
+	assert.False(t, results[0].Pass, "want fail when output hits cap")
+	assert.Contains(t, results[0].Message, "exceeded", "message should mention exceeded cap")
+	assert.Contains(t, results[0].Message, "--command-log", "message should mention --command-log")
 }
 
 // ── with_env ──────────────────────────────────────────────────────────────────
@@ -271,12 +242,9 @@ func TestCommand_WithEnv_Injected(t *testing.T) {
 		Label:   "greet",
 		WithEnv: map[string]string{"FOO": "bar"},
 	}})
-	if !results[0].Pass {
-		t.Errorf("want pass: %s", results[0].Message)
-	}
-	if got["FOO"] != "bar" {
-		t.Errorf("env FOO = %q, want bar", got["FOO"])
-	}
+	require.NotEmpty(t, results)
+	assert.True(t, results[0].Pass, "want pass: %s", results[0].Message)
+	assert.Equal(t, "bar", got["FOO"], "env FOO")
 }
 
 func TestCommand_WithEnv_ProfileExpansionInValue(t *testing.T) {
@@ -291,9 +259,7 @@ func TestCommand_WithEnv_ProfileExpansionInValue(t *testing.T) {
 		Label:   "mode",
 		WithEnv: map[string]string{"MODE": "{{profile}}"},
 	}})
-	if got["MODE"] != "release" {
-		t.Errorf("MODE = %q, want release", got["MODE"])
-	}
+	assert.Equal(t, "release", got["MODE"], "MODE")
 }
 
 func TestCommand_WithEnv_MultipleKeys(t *testing.T) {
@@ -310,9 +276,8 @@ func TestCommand_WithEnv_MultipleKeys(t *testing.T) {
 			"BETA":  "2",
 		},
 	}})
-	if got["ALPHA"] != "1" || got["BETA"] != "2" {
-		t.Errorf("env = %#v, want ALPHA=1 BETA=2", got)
-	}
+	assert.Equal(t, "1", got["ALPHA"], "env = %#v", got)
+	assert.Equal(t, "2", got["BETA"], "env = %#v", got)
 }
 
 func TestCommand_WithEnv_CommandLogPrefix(t *testing.T) {
@@ -330,17 +295,11 @@ func TestCommand_WithEnv_CommandLogPrefix(t *testing.T) {
 		Label:   "greet",
 		WithEnv: map[string]string{"FOO": "bar"},
 	}})
-	if err := cl.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, cl.Close())
 
 	content, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("reading log: %v", err)
-	}
-	if !strings.Contains(string(content), "FOO=bar sh -c") {
-		t.Errorf("log should contain env prefix: %q", string(content))
-	}
+	require.NoError(t, err, "reading log")
+	assert.Contains(t, string(content), "FOO=bar sh -c", "log should contain env prefix")
 }
 
 func TestDefaultRunCommand_WithEnvOverridesInherited(t *testing.T) {
@@ -352,15 +311,9 @@ func TestDefaultRunCommand_WithEnvOverridesInherited(t *testing.T) {
 		"",
 		map[string]string{"TRIAGE_OVERRIDE_TEST": "injected"},
 	)
-	if err != nil {
-		t.Fatalf("defaultRunCommand: %v", err)
-	}
-	if exitCode != 0 {
-		t.Fatalf("exit = %d, want 0", exitCode)
-	}
-	if strings.TrimSpace(stdout) != "injected" {
-		t.Errorf("stdout = %q, want injected", stdout)
-	}
+	require.NoError(t, err, "defaultRunCommand")
+	require.Equal(t, 0, exitCode, "exit")
+	assert.Equal(t, "injected", strings.TrimSpace(stdout), "stdout")
 }
 
 func TestShellQuote(t *testing.T) {
@@ -373,9 +326,7 @@ func TestShellQuote(t *testing.T) {
 		{"under_score", "under_score"},
 	}
 	for _, tc := range cases {
-		if got := shellQuote(tc.in); got != tc.want {
-			t.Errorf("shellQuote(%q) = %q, want %q", tc.in, got, tc.want)
-		}
+		assert.Equalf(t, tc.want, shellQuote(tc.in), "shellQuote(%q)", tc.in)
 	}
 }
 
@@ -390,40 +341,28 @@ func TestMergeEnv_LastKeyWins(t *testing.T) {
 			t.Error("FOO=new should appear after FOO=old so override wins")
 		}
 	}
-	if !found {
-		t.Errorf("mergeEnv missing FOO=new: %v", got)
-	}
+	assert.True(t, found, "mergeEnv missing FOO=new: %v", got)
 }
 
 // ── one-line excerpt ──────────────────────────────────────────────────────────
 
 func TestOneLineExcerpt_Empty(t *testing.T) {
-	if oneLineExcerpt("") != "" {
-		t.Error("empty input should return empty")
-	}
+	assert.Empty(t, oneLineExcerpt(""), "empty input should return empty")
 }
 
 func TestOneLineExcerpt_SingleLine(t *testing.T) {
-	if got := oneLineExcerpt("hello"); got != "hello" {
-		t.Errorf("got %q, want 'hello'", got)
-	}
+	assert.Equal(t, "hello", oneLineExcerpt("hello"))
 }
 
 func TestOneLineExcerpt_MultiLine(t *testing.T) {
-	if got := oneLineExcerpt("first\nsecond\nthird"); got != "first" {
-		t.Errorf("got %q, want 'first'", got)
-	}
+	assert.Equal(t, "first", oneLineExcerpt("first\nsecond\nthird"))
 }
 
 func TestOneLineExcerpt_Truncate(t *testing.T) {
 	long := strings.Repeat("a", 90)
 	got := oneLineExcerpt(long)
-	if len(got) > 83 { // 80 chars + 3-byte "…"
-		t.Errorf("excerpt too long: %d chars", len(got))
-	}
-	if !strings.HasSuffix(got, "…") {
-		t.Errorf("should end with ellipsis: %q", got)
-	}
+	assert.LessOrEqual(t, len(got), 83, "excerpt too long") // 80 chars + 3-byte "…"
+	assert.True(t, strings.HasSuffix(got, "…"), "should end with ellipsis: %q", got)
 }
 
 // ── CommandLog ────────────────────────────────────────────────────────────────
@@ -431,34 +370,20 @@ func TestOneLineExcerpt_Truncate(t *testing.T) {
 func TestCommandLog_NilSafe(t *testing.T) {
 	var cl *CommandLog
 	cl.WriteBlock("lbl", "/dir", "sh -c true", nil)
-	if closeErr := cl.Close(); closeErr != nil {
-		t.Errorf("nil Close should not error: %v", closeErr)
-	}
-	if cl.Path() != "" {
-		t.Error("nil Path should return empty string")
-	}
+	assert.NoError(t, cl.Close(), "nil Close should not error")
+	assert.Empty(t, cl.Path(), "nil Path should return empty string")
 }
 
 func TestCommandLog_WriteAndClose(t *testing.T) {
 	path := t.TempDir() + "/commands.log"
 	cl, err := OpenCommandLog(path)
-	if err != nil {
-		t.Fatalf("OpenCommandLog: %v", err)
-	}
+	require.NoError(t, err, "OpenCommandLog")
 	cl.WriteBlock("my label", "/some/dir", "sh -c echo hi", []byte("hi\n"))
-	if closeErr := cl.Close(); closeErr != nil {
-		t.Fatalf("Close: %v", closeErr)
-	}
+	require.NoError(t, cl.Close(), "Close")
 	content, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("reading log: %v", err)
-	}
-	if !strings.Contains(string(content), "my label") {
-		t.Errorf("log should contain label: %q", string(content))
-	}
-	if !strings.Contains(string(content), "hi") {
-		t.Errorf("log should contain output: %q", string(content))
-	}
+	require.NoError(t, err, "reading log")
+	assert.Contains(t, string(content), "my label", "log should contain label")
+	assert.Contains(t, string(content), "hi", "log should contain output")
 }
 
 func TestCommandLog_Truncated(t *testing.T) {
@@ -466,38 +391,25 @@ func TestCommandLog_Truncated(t *testing.T) {
 
 	cl1, _ := OpenCommandLog(path)
 	cl1.WriteBlock("run1", "", "cmd", []byte("first run output"))
-	if err := cl1.Close(); err != nil {
-		t.Fatalf("Close cl1: %v", err)
-	}
+	require.NoError(t, cl1.Close(), "Close cl1")
 
 	// Second open should truncate, not append.
 	cl2, _ := OpenCommandLog(path)
 	cl2.WriteBlock("run2", "", "cmd", []byte("second run output"))
-	if err := cl2.Close(); err != nil {
-		t.Fatalf("Close cl2: %v", err)
-	}
+	require.NoError(t, cl2.Close(), "Close cl2")
 
 	content, _ := os.ReadFile(path)
-	if strings.Contains(string(content), "first run output") {
-		t.Errorf("second open should truncate; first run content found: %q", string(content))
-	}
-	if !strings.Contains(string(content), "second run output") {
-		t.Errorf("second run output missing: %q", string(content))
-	}
+	assert.NotContains(t, string(content), "first run output", "second open should truncate")
+	assert.Contains(t, string(content), "second run output", "second run output missing")
 }
 
 func TestCommandLog_MkdirParents(t *testing.T) {
 	path := t.TempDir() + "/deep/nested/commands.log"
 	cl, err := OpenCommandLog(path)
-	if err != nil {
-		t.Fatalf("OpenCommandLog should create parent dirs: %v", err)
-	}
-	if err := cl.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
-	if _, err := os.Stat(path); err != nil {
-		t.Errorf("log file should exist: %v", err)
-	}
+	require.NoError(t, err, "OpenCommandLog should create parent dirs")
+	require.NoError(t, cl.Close(), "Close")
+	_, err = os.Stat(path)
+	assert.NoError(t, err, "log file should exist")
 }
 
 // ── command + CommandLog integration ─────────────────────────────────────────
@@ -518,18 +430,10 @@ func TestCommand_WritesCommandLog(t *testing.T) {
 		Value: "echo hello",
 		Label: "greet",
 	}})
-	if err := cl.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, cl.Close(), "Close")
 
 	content, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("reading log: %v", err)
-	}
-	if !strings.Contains(string(content), "greet") {
-		t.Errorf("log should contain label 'greet': %q", string(content))
-	}
-	if !strings.Contains(string(content), "hello") {
-		t.Errorf("log should contain output 'hello': %q", string(content))
-	}
+	require.NoError(t, err, "reading log")
+	assert.Contains(t, string(content), "greet", "log should contain label 'greet'")
+	assert.Contains(t, string(content), "hello", "log should contain output 'hello'")
 }

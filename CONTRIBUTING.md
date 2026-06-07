@@ -36,8 +36,11 @@ pinned in `.go-version`.
 - **Add a check type or flag?** Update the schema and the JSON Schema, add golden
   tests, and add a row to the relevant `examples/` config so the feature is
   exercised. Update [`specs/product.md`](./specs/product.md) in the same PR.
-- **New behavior needs tests.** Prefer table-driven unit tests and golden output
-  fixtures over ad-hoc assertions.
+- **New behavior needs tests.** Write table-driven unit tests that assert with
+  [testify](https://github.com/stretchr/testify) — `require` for fatal
+  preconditions (e.g. before indexing a slice), `assert` for independent checks —
+  and keep golden output fixtures for end-to-end stdout. Prefer these over
+  hand-rolled `if got != want { t.Errorf(...) }` assertions.
 - **Keep it cross-platform.** No implicit shell — structured checks spawn tools
   directly via `exec.LookPath`/`exec.Command`; `command` checks name their
   interpreter and are platform-guarded (see spec §3, §5).

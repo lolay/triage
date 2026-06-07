@@ -5,15 +5,16 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // helper: write a file in dir and return the absolute path.
 func writeFile(t *testing.T, dir, name, content string) string {
 	t.Helper()
 	p := filepath.Join(dir, name)
-	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
-		t.Fatalf("writeFile %s: %v", p, err)
-	}
+	require.NoError(t, os.WriteFile(p, []byte(content), 0o644), "writeFile %s", p)
 	return p
 }
 
@@ -43,13 +44,8 @@ default:
     hint: https://go.dev/dl
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	want := "tool:git tool:go"
-	if got := join(ids(cfg.Profiles["default"])); got != want {
-		t.Errorf("default ids = %q, want %q", got, want)
-	}
+	require.NoError(t, err, "load")
+	assert.Equal(t, "tool:git tool:go", join(ids(cfg.Profiles["default"])), "default ids")
 }
 
 func TestLoad_IncludeCollisionWarns(t *testing.T) {
@@ -65,16 +61,12 @@ default:
     hint: from-top
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if len(cfg.Warnings) != 1 || !strings.Contains(cfg.Warnings[0], `"tool:git"`) {
-		t.Errorf("want collision warning, got %v", cfg.Warnings)
-	}
+	require.NoError(t, err, "load")
+	require.Len(t, cfg.Warnings, 1, "want collision warning, got %v", cfg.Warnings)
+	assert.Contains(t, cfg.Warnings[0], `"tool:git"`)
 	// Later definition wins.
-	if got := cfg.Profiles["default"][0].Hint; got != "from-top" {
-		t.Errorf("later hint should win, got %q", got)
-	}
+	require.NotEmpty(t, cfg.Profiles["default"])
+	assert.Equal(t, "from-top", cfg.Profiles["default"][0].Hint, "later hint should win")
 }
 
 func TestLoad_IncludeDiamondSafe(t *testing.T) {
@@ -97,14 +89,9 @@ default:
   - right.yaml
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("diamond load: %v", err)
-	}
+	require.NoError(t, err, "diamond load")
 	// git appears once (diamond-safe), go and make added.
-	want := "tool:git tool:go tool:make"
-	if got := join(ids(cfg.Profiles["default"])); got != want {
-		t.Errorf("default = %q, want %q", got, want)
-	}
+	assert.Equal(t, "tool:git tool:go tool:make", join(ids(cfg.Profiles["default"])), "default")
 }
 
 // ── extends / add ────────────────────────────────────────────────────────────
@@ -121,13 +108,8 @@ release:
     - tool: gh
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	want := "tool:git tool:go tool:gh"
-	if got := join(ids(cfg.Profiles["release"])); got != want {
-		t.Errorf("release = %q, want %q", got, want)
-	}
+	require.NoError(t, err, "load")
+	assert.Equal(t, "tool:git tool:go tool:gh", join(ids(cfg.Profiles["release"])), "release")
 }
 
 func TestLoad_ExtendsCycleDetected(t *testing.T) {
@@ -139,9 +121,8 @@ b:
   extends: [a]
   add: []
 `)
-	if _, err := load(filepath.Join(dir, "triage.yaml")); err == nil {
-		t.Error("expected cycle error, got nil")
-	}
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	assert.Error(t, err, "expected cycle error")
 }
 
 func TestLoad_ExtendsUnknownProfile(t *testing.T) {
@@ -150,9 +131,8 @@ func TestLoad_ExtendsUnknownProfile(t *testing.T) {
   extends: [nonexistent]
   add: []
 `)
-	if _, err := load(filepath.Join(dir, "triage.yaml")); err == nil {
-		t.Error("expected unknown-profile error, got nil")
-	}
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	assert.Error(t, err, "expected unknown-profile error")
 }
 
 // ── version_from ─────────────────────────────────────────────────────────────
@@ -165,12 +145,9 @@ func TestLoad_VersionFrom_BareVersion(t *testing.T) {
     version_from: .go-version
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if got := cfg.Profiles["default"][0].Constraint; got != ">=1.26.3" {
-		t.Errorf("constraint = %q, want >=1.26.3", got)
-	}
+	require.NoError(t, err, "load")
+	require.NotEmpty(t, cfg.Profiles["default"])
+	assert.Equal(t, ">=1.26.3", cfg.Profiles["default"][0].Constraint, "constraint")
 }
 
 func TestLoad_VersionFrom_BareVersionWithV(t *testing.T) {
@@ -181,12 +158,9 @@ func TestLoad_VersionFrom_BareVersionWithV(t *testing.T) {
     version_from: .nvmrc
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if got := cfg.Profiles["default"][0].Constraint; got != ">=20.11.0" {
-		t.Errorf("constraint = %q, want >=20.11.0", got)
-	}
+	require.NoError(t, err, "load")
+	require.NotEmpty(t, cfg.Profiles["default"])
+	assert.Equal(t, ">=20.11.0", cfg.Profiles["default"][0].Constraint, "constraint")
 }
 
 func TestLoad_VersionFrom_ExistingRange(t *testing.T) {
@@ -197,12 +171,9 @@ func TestLoad_VersionFrom_ExistingRange(t *testing.T) {
     version_from: ver.txt
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if got := cfg.Profiles["default"][0].Constraint; got != ">=1.2 <2" {
-		t.Errorf("constraint = %q, want >=1.2 <2", got)
-	}
+	require.NoError(t, err, "load")
+	require.NotEmpty(t, cfg.Profiles["default"])
+	assert.Equal(t, ">=1.2 <2", cfg.Profiles["default"][0].Constraint, "constraint")
 }
 
 func TestLoad_VersionFrom_Missing_Warns(t *testing.T) {
@@ -212,12 +183,8 @@ func TestLoad_VersionFrom_Missing_Warns(t *testing.T) {
     version_from: .nonexistent
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if len(cfg.Warnings) == 0 {
-		t.Error("expected version_from warning, got none")
-	}
+	require.NoError(t, err, "load")
+	assert.NotEmpty(t, cfg.Warnings, "expected version_from warning")
 }
 
 // ── validation errors ─────────────────────────────────────────────────────────
@@ -225,33 +192,29 @@ func TestLoad_VersionFrom_Missing_Warns(t *testing.T) {
 func TestLoad_RootMustBeMapping(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "triage.yaml", "- tool: git\n")
-	if _, err := load(filepath.Join(dir, "triage.yaml")); err == nil {
-		t.Error("expected root-mapping error")
-	}
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	assert.Error(t, err, "expected root-mapping error")
 }
 
 func TestLoad_BareCheckAtRoot(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "triage.yaml", "tool: git\n")
-	if _, err := load(filepath.Join(dir, "triage.yaml")); err == nil {
-		t.Error("expected bare-check-at-root error")
-	}
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	assert.Error(t, err, "expected bare-check-at-root error")
 }
 
 func TestLoad_MultipleTypeKeys(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "triage.yaml", "default:\n  - tool: git\n    env: FOO\n")
-	if _, err := load(filepath.Join(dir, "triage.yaml")); err == nil {
-		t.Error("expected multiple-type-keys error")
-	}
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	assert.Error(t, err, "expected multiple-type-keys error")
 }
 
 func TestLoad_NoTypeKey(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "triage.yaml", "default:\n  - hint: install something\n")
-	if _, err := load(filepath.Join(dir, "triage.yaml")); err == nil {
-		t.Error("expected no-type-key error")
-	}
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	assert.Error(t, err, "expected no-type-key error")
 }
 
 // ── contradiction warnings ────────────────────────────────────────────────────
@@ -265,16 +228,11 @@ func TestLoad_VersionAndVersionFrom_Warns(t *testing.T) {
     version_from: .v
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if len(cfg.Warnings) == 0 {
-		t.Error("expected contradiction warning")
-	}
+	require.NoError(t, err, "load")
+	assert.NotEmpty(t, cfg.Warnings, "expected contradiction warning")
 	// version wins over version_from.
-	if got := cfg.Profiles["default"][0].Constraint; got != ">=1.2" {
-		t.Errorf("version should win: constraint = %q", got)
-	}
+	require.NotEmpty(t, cfg.Profiles["default"])
+	assert.Equal(t, ">=1.2", cfg.Profiles["default"][0].Constraint, "version should win")
 }
 
 func TestLoad_UnsetAndMatches_Warns(t *testing.T) {
@@ -285,18 +243,14 @@ func TestLoad_UnsetAndMatches_Warns(t *testing.T) {
     matches: "x"
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
+	require.NoError(t, err, "load")
 	hasContradiction := false
 	for _, w := range cfg.Warnings {
 		if strings.Contains(w, "unset") && strings.Contains(w, "matches") {
 			hasContradiction = true
 		}
 	}
-	if !hasContradiction {
-		t.Errorf("expected unset+matches warning, got %v", cfg.Warnings)
-	}
+	assert.True(t, hasContradiction, "expected unset+matches warning, got %v", cfg.Warnings)
 }
 
 // ── type-as-key parsing for all §5 types ──────────────────────────────────────
@@ -317,17 +271,13 @@ func TestLoad_AllTypeKeys(t *testing.T) {
     dir: subdir
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
+	require.NoError(t, err, "load")
 	types := make(map[string]bool)
 	for _, c := range cfg.Profiles["default"] {
 		types[c.Type] = true
 	}
 	for _, want := range []string{TypeTool, TypeEnv, TypePath, TypeOneOf, TypeCommand, TypeGroup, TypeDelegate} {
-		if !types[want] {
-			t.Errorf("missing type %q", want)
-		}
+		assert.Contains(t, types, want, "missing type %q", want)
 	}
 }
 
@@ -338,40 +288,27 @@ func TestLoad_GroupLegacyString(t *testing.T) {
     group: Core
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
+	require.NoError(t, err, "load")
+	require.NotEmpty(t, cfg.Profiles["default"])
 	c := cfg.Profiles["default"][0]
-	if c.Type != TypeTool {
-		t.Errorf("type = %q, want tool", c.Type)
-	}
-	if c.Group != "Core" {
-		t.Errorf("group = %q, want Core", c.Group)
-	}
+	assert.Equal(t, TypeTool, c.Type, "type")
+	assert.Equal(t, "Core", c.Group, "group")
 }
 
 func TestLoad_EmptyDocument(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "triage.yaml", "")
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load empty doc: %v", err)
-	}
-	if len(cfg.Profiles) != 0 {
-		t.Errorf("want 0 profiles, got %d", len(cfg.Profiles))
-	}
+	require.NoError(t, err, "load empty doc")
+	assert.Empty(t, cfg.Profiles, "want 0 profiles")
 }
 
 func TestLoad_EmptyProfile(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "triage.yaml", "default: []\n")
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if len(cfg.Profiles["default"]) != 0 {
-		t.Errorf("want empty profile")
-	}
+	require.NoError(t, err, "load")
+	assert.Empty(t, cfg.Profiles["default"], "want empty profile")
 }
 
 // ── vars ──────────────────────────────────────────────────────────────────────
@@ -385,12 +322,9 @@ default:
   - tool: git
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if cfg.Vars["region"] != "us-west-2" || cfg.Vars["tool_prefix"] != "fake" {
-		t.Errorf("vars = %#v", cfg.Vars)
-	}
+	require.NoError(t, err, "load")
+	assert.Equal(t, "us-west-2", cfg.Vars["region"], "vars = %#v", cfg.Vars)
+	assert.Equal(t, "fake", cfg.Vars["tool_prefix"], "vars = %#v", cfg.Vars)
 }
 
 func TestLoad_VarsIncludeMergeLaterWins(t *testing.T) {
@@ -405,12 +339,8 @@ vars:
 default: []
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if cfg.Vars["region"] != "from-top" {
-		t.Errorf("region = %q, want from-top", cfg.Vars["region"])
-	}
+	require.NoError(t, err, "load")
+	assert.Equal(t, "from-top", cfg.Vars["region"], "region")
 }
 
 func TestLoad_VarsCollisionWarns(t *testing.T) {
@@ -425,15 +355,10 @@ vars:
 default: []
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if len(cfg.Warnings) != 1 || !strings.Contains(cfg.Warnings[0], `"key"`) {
-		t.Errorf("want vars collision warning, got %v", cfg.Warnings)
-	}
-	if cfg.Vars["key"] != "second" {
-		t.Errorf("later value should win, got %q", cfg.Vars["key"])
-	}
+	require.NoError(t, err, "load")
+	require.Len(t, cfg.Warnings, 1, "want vars collision warning, got %v", cfg.Warnings)
+	assert.Contains(t, cfg.Warnings[0], `"key"`)
+	assert.Equal(t, "second", cfg.Vars["key"], "later value should win")
 }
 
 func TestLoad_VarsReservedNameWarns(t *testing.T) {
@@ -445,16 +370,8 @@ func TestLoad_VarsReservedNameWarns(t *testing.T) {
 default: []
 `)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if len(cfg.Warnings) != 2 {
-		t.Errorf("want 2 reserved-name warnings, got %v", cfg.Warnings)
-	}
-	if _, ok := cfg.Vars["profile"]; ok {
-		t.Error("profile should not be in merged vars")
-	}
-	if cfg.Vars["ok"] != "fine" {
-		t.Errorf("ok var missing: %#v", cfg.Vars)
-	}
+	require.NoError(t, err, "load")
+	assert.Len(t, cfg.Warnings, 2, "want 2 reserved-name warnings, got %v", cfg.Warnings)
+	assert.NotContains(t, cfg.Vars, "profile", "profile should not be in merged vars")
+	assert.Equal(t, "fine", cfg.Vars["ok"], "ok var missing: %#v", cfg.Vars)
 }

@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/lolay/triage/internal/config"
 )
 
@@ -53,20 +56,12 @@ func TestPool_SemaphoreCapsConcurrency(t *testing.T) {
 	})
 	results := r.Run(checks)
 
-	if len(results) != nChecks {
-		t.Fatalf("want %d results, got %d", nChecks, len(results))
-	}
+	require.Len(t, results, nChecks)
 	for _, res := range results {
-		if !res.Pass {
-			t.Errorf("check %q should pass: %s", res.Label, res.Message)
-		}
+		assert.True(t, res.Pass, "check %q should pass: %s", res.Label, res.Message)
 	}
-	if got := maxSeen.Load(); got > jobs {
-		t.Errorf("max concurrent probes = %d, want <= %d", got, jobs)
-	}
-	if got := maxSeen.Load(); got < 2 {
-		t.Errorf("expected real concurrency (max in-flight %d); pool may not be running", got)
-	}
+	assert.LessOrEqual(t, maxSeen.Load(), int32(jobs), "max concurrent probes should be capped at Jobs")
+	assert.GreaterOrEqual(t, maxSeen.Load(), int32(2), "expected real concurrency; pool may not be running")
 }
 
 // TestPool_BarePresenceDoesNotHoldToken verifies that bare tool-presence checks
@@ -85,13 +80,9 @@ func TestPool_BarePresenceDoesNotHoldToken(t *testing.T) {
 		{Type: config.TypeTool, Value: "b"},
 		{Type: config.TypeTool, Value: "c"},
 	})
-	if len(results) != 3 {
-		t.Fatalf("want 3 results, got %d", len(results))
-	}
+	require.Len(t, results, 3)
 	for _, res := range results {
-		if !res.Pass {
-			t.Errorf("presence check %q should pass", res.Label)
-		}
+		assert.True(t, res.Pass, "presence check %q should pass", res.Label)
 	}
 }
 
@@ -125,12 +116,8 @@ func TestSerial_NeverOverlaps(t *testing.T) {
 	r := NewRunnerWith(RunnerOpts{RunCommand: runCmd, Jobs: 8})
 	results := r.Run(checks)
 
-	if len(results) != 5 {
-		t.Fatalf("want 5 results, got %d", len(results))
-	}
-	if serialSawOthers.Load() != 0 {
-		t.Errorf("serial check overlapped with another check")
-	}
+	require.Len(t, results, 5)
+	assert.Zero(t, serialSawOthers.Load(), "serial check overlapped with another check")
 }
 
 // TestSerial_GlobalAcrossDelegates asserts the serial lock is process-global:
@@ -175,9 +162,7 @@ func TestSerial_GlobalAcrossDelegates(t *testing.T) {
 	})
 	r.Run(loadProfile(t, cfgPath, "default"))
 
-	if overlap.Load() != 0 {
-		t.Errorf("serial checks in sibling delegates overlapped")
-	}
+	assert.Zero(t, overlap.Load(), "serial checks in sibling delegates overlapped")
 }
 
 // ── command-log byte equality ─────────────────────────────────────────────────
@@ -201,39 +186,28 @@ func TestCommandLog_ByteEqualAcrossJobs(t *testing.T) {
 	run := func(jobs int) []byte {
 		logPath := filepath.Join(t.TempDir(), "commands.log")
 		cl, err := OpenCommandLog(logPath)
-		if err != nil {
-			t.Fatalf("OpenCommandLog: %v", err)
-		}
+		require.NoError(t, err, "OpenCommandLog")
 		r := NewRunnerWith(RunnerOpts{
 			CommandLog: cl,
 			RunCommand: fakeRunCommand(table),
 			Jobs:       jobs,
 		})
 		r.Run(checks)
-		if closeErr := cl.Close(); closeErr != nil {
-			t.Fatalf("Close: %v", closeErr)
-		}
+		require.NoError(t, cl.Close(), "Close")
 		b, err := os.ReadFile(logPath)
-		if err != nil {
-			t.Fatalf("read log: %v", err)
-		}
+		require.NoError(t, err, "read log")
 		return b
 	}
 
 	seq := run(1)
 	par := run(8)
-	if string(seq) != string(par) {
-		t.Errorf("command log differs across --jobs:\n--- -j1 ---\n%s\n--- -j8 ---\n%s", seq, par)
-	}
+	assert.Equal(t, string(seq), string(par), "command log differs across --jobs")
 	// Blocks must be in list order regardless of jobs.
 	for _, label := range []string{"one", "two", "three", "four"} {
-		if !strings.Contains(string(par), label) {
-			t.Errorf("log missing block %q: %s", label, par)
-		}
+		assert.Contains(t, string(par), label, "log missing block %q", label)
 	}
-	if idx1, idx4 := strings.Index(string(par), "one"), strings.Index(string(par), "four"); idx1 > idx4 {
-		t.Errorf("log blocks out of list order: %s", par)
-	}
+	idx1, idx4 := strings.Index(string(par), "one"), strings.Index(string(par), "four")
+	assert.LessOrEqual(t, idx1, idx4, "log blocks out of list order: %s", par)
 }
 
 // ── delegate cycle + var isolation under the pool ─────────────────────────────
@@ -259,9 +233,7 @@ func TestDelegate_CycleIsFatal(t *testing.T) {
 		Jobs:       8,
 	})
 	r.Run(loadProfile(t, cfgPath, "default"))
-	if r.Fatal() == nil {
-		t.Errorf("expected a fatal cycle error")
-	}
+	assert.Error(t, r.Fatal(), "expected a fatal cycle error")
 }
 
 // TestDelegate_VarIsolation confirms a child uses its own config vars (not the
@@ -298,9 +270,7 @@ default:
 	})
 	r.Run(loadProfile(t, cfgPath, "default"))
 
-	if gotScript != "echo child-global" {
-		t.Errorf("script = %q, want %q (child config var + tree-wide CLI var)", gotScript, "echo child-global")
-	}
+	assert.Equal(t, "echo child-global", gotScript, "child config var + tree-wide CLI var")
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -308,20 +278,14 @@ default:
 // writeCfg writes name under dir (creating dir), failing the test on error.
 func writeCfg(t *testing.T, dir, name, content string) {
 	t.Helper()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", dir, err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
-		t.Fatalf("write %s: %v", name, err)
-	}
+	require.NoError(t, os.MkdirAll(dir, 0o755), "mkdir %s", dir)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644), "write %s", name)
 }
 
 // loadProfile discovers the config at path and returns the named profile.
 func loadProfile(t *testing.T, path, profile string) config.Profile {
 	t.Helper()
 	cfg, err := config.Discover(path)
-	if err != nil {
-		t.Fatalf("discover %s: %v", path, err)
-	}
+	require.NoError(t, err, "discover %s", path)
 	return cfg.Profiles[profile]
 }

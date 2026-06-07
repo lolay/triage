@@ -5,6 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/lolay/triage/internal/engine"
 )
 
@@ -24,9 +27,7 @@ func TestJSON_KeyOrder(t *testing.T) {
 			Depth:    1,
 		},
 	}
-	if err := JSON(&buf, results, "default", ""); err != nil {
-		t.Fatalf("JSON: %v", err)
-	}
+	require.NoError(t, JSON(&buf, results, "default", ""), "JSON")
 	got := buf.String()
 
 	// Among the always-present + populated keys, this is the documented order.
@@ -34,12 +35,8 @@ func TestJSON_KeyOrder(t *testing.T) {
 	lastIdx := -1
 	for _, key := range want {
 		idx := strings.Index(got, `"`+key+`"`)
-		if idx < 0 {
-			t.Fatalf("key %q missing from JSON output:\n%s", key, got)
-		}
-		if idx < lastIdx {
-			t.Errorf("key %q is out of declaration order in JSON output:\n%s", key, got)
-		}
+		require.GreaterOrEqualf(t, idx, 0, "key %q missing from JSON output:\n%s", key, got)
+		assert.GreaterOrEqualf(t, idx, lastIdx, "key %q is out of declaration order in JSON output:\n%s", key, got)
 		lastIdx = idx
 	}
 }

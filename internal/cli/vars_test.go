@@ -1,33 +1,27 @@
 package cli
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseCLIVars_Valid(t *testing.T) {
 	m, err := parseCLIVars([]string{"region=eu", "mode=release"})
-	if err != nil {
-		t.Fatalf("parseCLIVars: %v", err)
-	}
-	if m["region"] != "eu" || m["mode"] != "release" {
-		t.Errorf("got %#v", m)
-	}
+	require.NoError(t, err, "parseCLIVars")
+	assert.Equal(t, "eu", m["region"], "got %#v", m)
+	assert.Equal(t, "release", m["mode"], "got %#v", m)
 }
 
 func TestParseCLIVars_ValueWithEquals(t *testing.T) {
 	m, err := parseCLIVars([]string{"url=https://x=y"})
-	if err != nil {
-		t.Fatalf("parseCLIVars: %v", err)
-	}
-	if m["url"] != "https://x=y" {
-		t.Errorf("got %q", m["url"])
-	}
+	require.NoError(t, err, "parseCLIVars")
+	assert.Equal(t, "https://x=y", m["url"])
 }
 
 func TestParseCLIVars_Invalid(t *testing.T) {
 	_, err := parseCLIVars([]string{"nope"})
-	if err == nil || !strings.Contains(err.Error(), "name=value") {
-		t.Errorf("want invalid error, got %v", err)
-	}
+	require.Error(t, err, "want invalid error")
+	assert.ErrorContains(t, err, "name=value")
 }
