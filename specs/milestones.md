@@ -8,26 +8,26 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 > Tags per the model-tier convention: `[deep]` architecture/ambiguous,
 > `[exec]` repo-aware implementation, `[fast]` mechanical/fully-spec'd.
 
-### m1 — Project, CLI skeleton & README
+### ~~m1 — Project, CLI skeleton & README~~ ✓
 
 - s1 — [deep] Repo bootstrap: Go module + `.go-version`, layout (`cmd/triage`, `internal/`), root `Makefile` (§11 conventions: `help` default, self-documenting `##`/`##@`, `build`/`test`/`lint`/`doctor`/`ci`/`pre-commit`/`clean`/`init`), CI calls `make ci`, `goreleaser` stub (no publish yet). Community files (LICENSE/README/CONTRIBUTING/COC/SECURITY/SUPPORT) already exist (§11); `.github/` = workflows + CODEOWNERS only — no issue/PR templates (§12)
 - s2 — [exec] `cobra` CLI shell: flat `triage` (default = run checks), optional `[config]` positional, `--version`, global flags (`--profile`, `--json`, `--quiet`, `--strict`, `--severity`, `--no-color`, `--command-log`, `--verbose`, `--no-update-check`); exit-code plumbing (pass-fail `0`/`1`/`3` default; `--severity` → `0`/`1`/`2`/`3`) (§4 CLI). **`--only` deferred** (§7.3)
 - s3 — [exec] README already drafted (§11) — keep in sync as flags/commands land
 - s4 — [fast] Golden-output harness + first end-to-end test (empty config → clean board)
 
-### m2 — Config & the `tool` check (single-repo MVP)
+### ~~m2 — Config & the `tool` check (single-repo MVP)~~ ✓
 
 - s1 — [deep] `triage.yaml` schema + loader (`goccy/go-yaml`): mapping root, top-level profile keys (no `profiles:` wrapper; no bare checks at root), `include`, optional empty `default`, `extends`/`add`, `version_from`, type-as-key checks; publish a JSON Schema for editors
 - s2 — [exec] `tool` check: presence via `exec.LookPath`, version extraction (incl. `go version`-style overrides), `version` (npm-style ranges) + `version_from` via `Masterminds/semver`
 - s3 — [exec] Severity model (`error`/`warn`/`info` + `required` sugar, `--strict`); grouped output (`group` containers + remediation summary); pending `[…]` + TTY back-update for slow checks (§7.2). Renderer **materializes results in list order, independent of execution order** (finalize-in-order) so it's ready for concurrency (§7.2) with no rewrite
 
-### m3 — Full check types
+### ~~m3 — Full check types~~ ✓
 
 - s1 — [exec] `env`, `path`, `one_of`, `platform` check types
 - s2 — [exec] `command` escape hatch (explicit interpreter + `platform` guard, **no implicit shell**); subprocess I/O: stream-to-discard default, bounded assertion scan, `--command-log` tee, `--verbose` stderr replay (§5)
 - s3 — [exec] Validate complex real-world checks in config (Xcode path/version, keychain certs, `xcrun`, virtualenv paths) against golden fixtures
 
-### m4 — Delegation & concurrency
+### ~~m4 — Delegation & concurrency~~ ✓
 
 - s1 — [deep] `delegate` check type + recursive nesting (checks list order, pass/fail per child)
 - s2 — [exec] Delegate tree renderer: nested board under pending summary line, stream child lines as they complete (extends §7.2 pending renderer)
