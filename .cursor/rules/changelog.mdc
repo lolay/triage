@@ -1,0 +1,44 @@
+---
+description: Keep CHANGELOG.md current — update it before every commit that adds, changes, or removes user-visible behavior.
+alwaysApply: true
+---
+
+# Changelog discipline
+
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## Update it before committing
+
+Any commit that touches user-visible behavior **must** update `CHANGELOG.md` first.
+This includes: new features, bug fixes, CLI flag changes, config schema changes,
+new man pages, release tooling, and documentation the user reads.
+
+Pure internal refactors (test helpers, linter config, comment typos) may skip it,
+but when in doubt, add an entry.
+
+## Where to add entries
+
+Unreleased work goes under the `## [Unreleased]` heading at the top.
+Group entries under `### Added`, `### Changed`, `### Fixed`, or `### Removed`.
+
+## What to write
+
+One bullet per logical change. Lead with the artifact or command the user touches,
+not with the implementation detail.
+
+```
+### Added
+- `--no-update-check` flag and `TRIAGE_NO_UPDATE_CHECK=1` env var to suppress
+  the release-staleness banner.
+- Man pages `triage.1` and `triage.5` installed via Homebrew cask.
+
+### Changed
+- Homebrew install command is now `brew install --cask lolay/tap/triage`.
+- `specs/config.md` is the canonical config reference; `specs/product.md §4–§5`
+  now link there instead of duplicating content.
+```
+
+## Reminder for agents
+
+Before calling `git commit`, check whether `CHANGELOG.md` appears in `git diff --name-only`.
+If user-visible files changed and the changelog did not, add the entry first.

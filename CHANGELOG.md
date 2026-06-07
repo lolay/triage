@@ -2,8 +2,41 @@
 
 All notable changes to `triage` are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Releases are tagged on the `lolay/triage` repository; m5 wires the release
-pipeline. Until then entries are grouped by milestone and refactor pass.
+
+---
+
+## [Unreleased] — m5: release & distribution pipeline
+
+_2026-06-07 · commit `afddce6`_
+
+### Added
+- GoReleaser v2 config: darwin/linux × amd64/arm64 builds, GitHub release
+  assets, Homebrew cask tap commit (`homebrew_casks`, `Casks/` directory).
+- GitHub Actions release workflow (`.github/workflows/release.yml`):
+  tag-triggered `goreleaser release` job + `promote-floating-tags` job
+  (`vX.Y`, `vX`) sequenced strictly after the GitHub release.
+- `make tag VERSION=x.y.z` and guarded `make release` (`CONFIRM_RELEASE=1`)
+  targets; `make man` runs `mandoc -Tlint` over both man pages.
+- Man pages `man/triage.1` (CLI reference) and `man/triage.5` (config file
+  format), hand-authored mdoc; mandoc lint clean.
+- Update-availability banner: `internal/updatecheck` fetches GitHub
+  `releases/latest`, caches to XDG cache dir (24 h TTL, 300 ms timeout),
+  compares semver, and prints a one-line hint. Suppressed in CI, JSON mode,
+  non-TTY, `--no-update-check`, and `TRIAGE_NO_UPDATE_CHECK=1`.
+- `specs/config.md` — canonical prose reference for `triage.yaml` format,
+  check types, composition, vars, and severity.
+- `specs/releasing.md` — maintainer guide: marketplace-last ordering rule,
+  phase diagram, required secrets, floating/pre-release tag rules, tap
+  bootstrap, and post-release verification.
+
+### Changed
+- Homebrew install command: `brew install --cask lolay/tap/triage` (cask,
+  not formula; semantically correct for a pre-built binary).
+- `specs/product.md §4–§5` trimmed to one-paragraph summaries that link to
+  `specs/config.md`; full check-type and config-model detail lives there now.
+- `triage.yaml` header comment updated to point to `specs/config.md`.
+- `README.md`: install section updated for Homebrew cask, Releasing section
+  added linking to `specs/releasing.md`.
 
 ---
 
