@@ -18,7 +18,12 @@ SHELL := bash
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot
+.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot man tag release
+
+# Remote-mutating targets refuse to run without CONFIRM_* (CI sets inline).
+define confirm
+$(if $(CONFIRM_$(1)),,$(error Set CONFIRM_$(1)=1 to run $@))
+endef
 
 # Module + binary coordinates.
 MODULE  := github.com/lolay/triage
@@ -91,3 +96,23 @@ clean: ## Remove build artifacts (bin/, dist/)
 
 snapshot: ## Build a local release snapshot (goreleaser, no publish)
 	goreleaser build --snapshot --clean
+
+man: ## Lint hand-authored man pages (mandoc -Tlint, best-effort)
+	@set -e; \
+	if command -v mandoc >/dev/null 2>&1; then \
+	  mandoc -Tlint man/triage.1 man/triage.5; \
+	else \
+	  echo "mandoc not found — skipping lint (install mandoc to validate man pages)"; \
+	fi
+
+tag: ## Create and push git tag VERSION=x.y.z (triggers release workflow)
+	$(call confirm,TAG)
+	@test -n "$(VERSION)" || { echo "VERSION=x.y.z required" >&2; exit 1; }
+	git tag "v$(VERSION)"
+	git push origin "v$(VERSION)"
+
+##@ Danger
+
+release: ## Publish release for current tag via goreleaser (tag must exist)
+	$(call confirm,RELEASE)
+	goreleaser release --clean

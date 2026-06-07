@@ -121,125 +121,30 @@ ship.
 ## 4. Config model — `triage.yaml`
 
 One `triage.yaml` per repo replaces the per-mode `doctor.*.conf` files. YAML
-chosen because it's already ubiquitous for nested project config (`project.yml`,
-`pnpm-workspace.yaml`, GitHub Actions workflows) and far less verbose than TOML
-for lists of checks; JSON works for free (YAML is a JSON superset).
+chosen because it's already ubiquitous for nested project config and far less
+verbose than TOML for lists of checks; JSON works for free (YAML is a JSON
+superset).
 
-```yaml
-# Root is always a mapping. Checks live under profile keys — never at the root.
-# Single-profile repo:
-default:
-  - tool: git
-    hint: https://git-scm.com
-  - tool: go
-    version_from: .go-version
-    hint: https://go.dev/dl
+**Canonical format reference:** profiles, composition, check types, fields,
+severity, and discovery rules live in **[`specs/config.md`](config.md)**.
+Editor validation: [`schema/triage.schema.json`](../schema/triage.schema.json).
+Worked examples: [`examples/`](../examples/) and the dogfood
+[`triage.yaml`](../triage.yaml).
 
-# Multi-profile / include — `include` is reserved; every other key is a profile:
-include:
-  - base.yaml
+Design choices (the *why*):
 
-default:
-  - tool: go
-    version_from: .go-version
-    hint: https://go.dev/dl
-
-release:
-  extends: [default]
-  add:
-    - tool: sops
-      hint: brew install sops
-
-# `default` may be omitted (treated as empty). This is valid in an included file:
-# release:
-#   extends: [default]
-#   add:
-#     - tool: cosign
-```
-
-Two composition axes — deliberately separate names (they're different operations):
-
-- **`include: [files…]`** — top-level list, processed **in order**. Each file
-merges its profile content into the composite config. **Collisions are
-flagged:** when a later file redefines a profile or check already present, the
-loader emits a load-time warning naming both sides (file + key); the later
-definition wins. Intentional overrides stay possible; silent shadowing does not.
-Check identity: same type key + primary value (`tool: go`, `group: Core toolchain`,
-`delegate: vitalink-api`, `command` on `label:`, …). Cross-file DRY.
-Cycle/diamond-safe.
-- **`extends: [profiles…]`** — per-profile, inherits one or more **profiles**
-within the already-merged config (override semantics; same collision-flag rule
-when a child check shadows a parent). `release` extends `default`.
-Cycle/diamond-safe.
-
-Other keys:
-
-- **Type-as-key.** Each check's *type key* (`tool:`/`env:`/`path:`/`one_of:`/
-`command:`/`delegate:`) carries its primary value; `severity`, `group`,
-`platform`, `hint` are optional fields on any check (see §5, §7.1). All checks
-in a profile's check list are **ordered** — delegates are peers, not a separate
-phase. That order is the **render order**: the engine may execute checks
-concurrently (bounded worker pool, §7.2) but always *materializes* results in
-list order, so output never depends on timing.
-- **Profiles at the root — no `profiles:` wrapper.** Root is always a **mapping**.
-Checks never sit at the top level — only under profile keys. Parsing rule:
-  1. **`include`** — reserved. Composes other files (processed first, in order).
-  2. **`vars`** — reserved. A mapping of reusable string values referenced in
-     check fields via `{{ name }}` (see below). Merged across `include:` files
-     (later wins; collisions warned). Overridable at runtime with
-     `--var name=value` (repeatable; CLI wins over config). Built-in vars
-     `profile` and `os` are injected by the engine and cannot be defined under
-     `vars:` (ignored with a warning).
-  3. **Any other key** — a **profile name**. Value is a check **list**, or
-     `{ extends: […], add: […] }` when inheriting. Use **`add:`** (not `checks:`)
-     with `extends`.
-  4. **`default` is the only special profile name** — it is the profile `triage`
-     runs when `--profile` is omitted. **`default` may be omitted** from a file
-     (treated as an empty profile). Included files may define only non-`default`
-     profiles (e.g. `release:`) when `default` is supplied by an earlier
-     `include`.
-  5. **Unlimited arbitrary profile names** — `release`, `ci`, `publish`, or any
-     other key that is not `include`, `vars`, or `default` (e.g. `release` is a
-     convention, not a built-in). Select with `triage --profile <name>`.
-- **`vars:` + `{{ name }}` templates.** Reference a var in any check string
-  field (`tool`, `version`, `path`, `command`, `label`, `hint`, `dir`,
-  `with_env` values, …) with `{{ var_name }}` (whitespace inside braces is
-  allowed). Precedence: config `vars:` < `--var` CLI override < built-ins
-  (`profile`, `os`). Expansion is **fail-closed**: an undefined `{{ name }}`,
-  **and** any malformed token — a `{{` that does not begin a well-formed
-  `{{ name }}` (e.g. `{{ 1bad }}`, `{{ a-b }}`, `{{}}`, an unclosed `{{`) —
-  fails the check with a clear error on the board rather than passing through as
-  literal text. A name is a letter or underscore followed by letters, digits, or
-  underscores. **Vars are not recursive** — a `{{ name }}` inside a `vars:` value
-  is **not** re-expanded; values are substituted in a single pass. (Var-in-var
-  indirection is intentionally a non-feature today and could be added later via
-  load-time, dependency-ordered resolution.) Example:
-
-```yaml
-vars:
-  region: us-west-2
-  tool_prefix: fake
-
-default:
-  - tool: "{{ tool_prefix }}-git"
-  - command: 'echo {{ region }}'
-    label: region check
-    contains: us-west-2
-```
-
-Run `triage --var region=eu …` to override `region` without editing the file.
-- **Config file names:** `triage.yaml` (canonical), `triage.yml`, `.triage.yaml`
-(hidden), or `.triage.yml` — all accepted, in that precedence order. `.yaml` is
-the recommended spelling; the `.yml` variants are accepted for convenience (e.g.
-for users coming from GitHub Actions). One **entry** file per run — no per-mode files, no `triage/`
-config directory, no multi-root discovery. Large or shared setups compose via
-**`include:`** (merge YAML files) and **`extends:`** (inherit profiles within
-the merged config); that is the only multi-file story. **No walk-up:** the entry
-file must live in the **current working directory** where `triage` is run, unless
-you pass an explicit path (§4 CLI). A **JSON Schema** ships for editor
-autocomplete + validation, which also blunts YAML's type/`Norway` footguns.
-- **Worked examples:** see `examples/` for representative repo shapes and the
-repo's own dogfood `triage.yaml`.
+- **Type-as-key checks** — each check names its type as the YAML key (`tool:`,
+  `env:`, …); optional fields attach to any check.
+- **Two composition axes** — `include:` (merge files, in order) and `extends:`
+  (inherit profiles) are deliberately separate mechanisms; collisions are
+  flagged at load time, later wins.
+- **Profiles at the root** — no `profiles:` wrapper; only `include` and `vars`
+  are reserved top-level keys besides profile names. `default` is special
+  (implicit when `--profile` is omitted).
+- **List order = render order** — execution may be concurrent (§7.2) but output
+  always materializes in config list order.
+- **No walk-up** — entry config must be in cwd or an explicit path (see CLI
+  below). One entry file per run; compose via `include:` / `extends:` only.
 
 ### CLI — flat invocation (no `check` subcommand)
 
@@ -281,174 +186,31 @@ More than one positional argument → usage error (exit `3`).
 
 ## 5. Check types
 
-These absorb today's bespoke bash declaratively. All are read-only.
+Eight declarative check types absorb today's bespoke bash doctor scripts. All
+are read-only. Full field reference per type, examples, and workspace patterns:
+**[`specs/config.md`](config.md)**.
 
+| Type | Purpose |
+| --- | --- |
+| `tool` | Command present; optional `version` or `version_from` |
+| `env` | Env var set or unset; optional `matches` regex |
+| `path` | File/dir exists (glob ok) |
+| `one_of` | At least one of N alternatives present |
+| `platform` | Guard on any check or group — runs only on matching OS |
+| `command` | Explicitly-interpreted snippet; assert exit/stdout (no implicit shell) |
+| `delegate` | Load and run another `triage.yaml` from `dir:` (nested tree output) |
+| `group` | Named container for other checks via `items:` |
 
-| Type       | Checks                                                                                                              | Replaces today's…                                                        |
-| ---------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `tool`     | command present; optional `version` or `version_from`                                                              | the whole `doctor.*.conf`                                                |
-| `env`      | env var set or unset; optional `matches` regex on value                                                             | `SOPS_AGE_KEY` / `ASC_KEY_ID` checks                                     |
-| `path`     | file/dir exists (glob ok)                                                                                           | `.venv-models`, `private_keys/*.p8`                                      |
-| `one_of`   | at least one of N alternatives present                                                                              | pnpm-or-npm, venv-or-system python                                       |
-| `platform` | a **field/guard** on any check or group — runs only on matching `os`/`arch`                                         | `if macOS` blocks                                                        |
-| `command`  | run an **explicitly-interpreted**, platform-guarded snippet; assert exit 0 (default) or stdout `contains`/`matches` | Xcode path/version, `security find-identity | grep 'Apple Distribution'` |
-| `delegate` | load and run another `triage.yaml` from `dir:` (nested tree output, §7.2)                                            | workspace / monorepo member configs                                      |
-| `group`    | named container for other checks (and nested groups) via `items:` (§7.2)                                             | explicit sections in long profiles                                     |
+**Command subprocess I/O** — `command` checks and `tool` version probes stream
+stdout/stderr to discard by default; `--command-log` opt-in tee; bounded assertion
+scan; `--verbose` stderr replay on failure. Full rules: §7 and [`config.md`](config.md).
 
+**Severity** (`error` / `warn` / `info`, orthogonal to profile): §7.1 and
+[`config.md`](config.md).
 
-**Field reference (optional fields on any check):** `severity` (§7.1), `platform`
-(`macos`/`linux`/`windows`), `hint`, `fix` (m7), `dir` (working directory — see
-below), `serial` (opt out of concurrency for this check or group — §7.2). Legacy
-**`group:` string field** on a check (output-only shorthand) is
-still accepted; prefer a structural **`group`** container when nesting.
-Type-specific:
-
-- `command` needs a `label:` (the snippet isn't a friendly name); assertion
-defaults to **exit 0**, or set `contains:` / `matches:` (stdout) / `exit:`
-(expected code); `interp:` picks `sh`/`pwsh` (default `sh`, never implicit).
-Template vars (`{{ name }}`) expand in the command string and all other check
-string fields (see §4 `vars:`). Built-in `{{ profile }}` and `{{ os }}` are
-always available. Optional
-**`dir:`** sets the working directory before the command runs — the right way to
-invoke a member repo's `make doctor` (or any other script) without treating it as
-a triage delegate. Optional **`with_env:`** injects a map of environment
-variables for that command only: pairs are layered over the inherited process
-environment (later keys override inherited values of the same name). Values support
-`{{ name }}` expansion; triage does not perform `$VAR` interpolation — the shell
-still does that inside the snippet. Example:
-
-```yaml
-- command: terraform validate
-  label: terraform config valid
-  with_env:
-    TF_IN_AUTOMATION: "1"
-    MODE: "{{ profile }}"
-```
-
-This also covers **auth/session validity** — run the CLI's
-own auth probe and let exit 0 mean "logged in and not expired" (e.g.
-`gcloud auth print-access-token`, `firebase login:list` + `contains: "@"`).
-- **Command subprocess I/O** — `command` checks and `tool` version probes spawn
-  subprocesses; their stdout/stderr must **never** pollute the human board and
-  must **not** be buffered unboundedly in memory (noisy or huge output is a
-  memory hazard). Rules:
-  - **Default (no flags):** stream stdout+stderr to **discard** (`/dev/null`) as bytes
-    arrive. The board shows only triage's `[✓]`/`[✗]` line (+ optional one-line
-    fail excerpt). **No command log file is written.**
-  - **`--command-log [path]`** (opt-in): tee the combined stream to a log file as
-    it arrives (stream-through, not load-then-write). The log file is **truncated
-    at the start of each run** (overwrite, not append across runs). Within a run,
-    each probe writes one block: `label`, `cwd`, expanded `run:` line, `---`, then
-    raw output. Path defaults to `.triage/commands.log` when the flag is given
-    without a value. Parent dirs are created as needed. **Off by default** —
-    omit the flag for normal use.
-  - **Under concurrency (`--jobs > 1`, §7.2):** "stream-through" means
-    **per-probe spool, then ordered concatenation** — never one shared file with
-    many writers. Each running probe streams its combined output to its **own**
-    spool as bytes arrive (no cross-probe interleaving, no in-memory buffering),
-    and when the probe finalizes, its block is appended to the log **in config
-    list order** (early finishers wait their turn; the spool is then discarded).
-    The on-disk format is unchanged — one coherent `label`/`cwd`/`run:`/`---`
-    /output block per probe — and the log is still truncated once at run start.
-  - **Assertions:** `contains:` / `matches:` scan a **bounded prefix** of
-    captured stdout (default cap **256 KiB** per check). Beyond the cap, the
-    check fails with a message to re-run with `--command-log` (or use shell
-    redirect below). Exit-code-only checks need no capture beyond the process
-    handle.
-  - **On failure:** board may show a **one-line excerpt**; `--json` `detail`
-    carries excerpt + `command_log` path when `--command-log` was set.
-  - **`--verbose`:** on failure, replay the matching log block (or captured
-    excerpt) to **stderr** so it does not fight the board on stdout. Under
-    concurrency, replays follow the same list-order, one-block-at-a-time
-    discipline so blocks never interleave.
-  - **Author escape hatch (POSIX):** redirect inside the `command:` string when
-    a named artifact is wanted regardless of triage flags — triage still sees
-    whatever the shell leaves on stdout/stderr after redirection:
-    ```yaml
-    - command: noisy-tool diagnose > .triage/diagnose.log 2>&1
-      label: diagnose ran cleanly
-    ```
-    Assertions run against the post-redirect streams only; the file is the
-    author's responsibility.
-- **`dir:`** on any check — resolve relative `path:` values and run `command:`
-from that directory. Defaults to the directory containing the loaded config
-(or the cwd triage was invoked from). A `command` with `dir:` is one **atomic**
-check in the parent board (`[✓] vitalink-web`), not a nested tree.
-- `platform` accepts a string or a list (`platform: macos`,
-`platform: [macos, linux]`); `os` values `macos`/`linux`/`windows`.
-- `one_of` takes either tool names (`one_of: [pnpm, npm]`) **or** a list of
-sub-checks (`one_of: [{env: SOPS_AGE_KEY}, {path: ~/.config/sops/age/keys.txt}]`).
-- `env` — assert presence or absence of a variable (pick one mode per check):
-  - **Set (default):** `env: VAR_NAME` — variable must be present. Optional
-    `matches:` (regex on the value). An empty value (`VAR=`) counts as set.
-  - **Unset:** `env: VAR_NAME` + `unset: true` — variable must **not** be in the
-    environment (`os.LookupEnv` not found). Fails if set, even to an empty string.
-    Mutually exclusive with `matches:` (loader warns if both).
-  - Typical uses for `unset: true`: dev profiles that must not inherit a prod
-    secret (`DATABASE_URL`), or tooling that breaks when a stray export is present.
-- `path` supports globs.
-- `tool` version fields (pick **one** per check; loader warns if both):
-  - **`version`** — npm-style semver range, quoted in YAML. Examples: `">=1.26"`,
-    `"^1.26.0"`, `"~1.2.0"`, `">=1.26 <2"`, `"1.x"`. Supports `^` `~` `>=` `<=`
-    `>` `<` `=` and comma/range combinations — same syntax npm/pnpm/Cargo use in
-    `package.json` / `Cargo.toml`.
-  - **`version_from`** — read a pin file (`.go-version`, `.nvmrc`,
-    `.terraform-version`, `.tool-versions`, …). A single bare version in the file
-    (e.g. `1.26`) is treated as `>=1.26`; if the file already contains a range,
-    use it as-is. Keeps the constraint in one place with your version manager.
-
-**Example mappings** — typical bespoke bash checks map cleanly:
-
-- Xcode `xcode-select -p` contains `Xcode` + version ≥ N → `command` + `platform: macos`
-- Code-signing certs in keychain → `command` (`security find-identity`) + `platform: macos`
-- `xcrun` tool presence → `command` (`xcrun --find`) + `platform: macos`
-- Virtualenv / model dir present → `path`
-- `python3` ≥ x → `tool`
-- Repo-specific secrets/profiles readiness → **plugin** (§6)
-- Workspace member on triage → `delegate` check; straggler on `make doctor` →
-`command` + `dir:` (§5)
-
-- **`group`** — container type; the type-key value is the section **name**.
-  **`items:`** holds child checks (`tool`, `command`, `delegate`, …) and nested
-  **`group`** entries. Optional `platform:` on the container skips the whole
-  section on non-matching OS. Output: section header with the group's worst glyph,
-  children indented one level (§7.2). Groups may nest arbitrarily deep.
-  ```yaml
-  - group: Core toolchain
-    items:
-      - tool: git
-      - tool: go
-        version_from: .go-version
-  - group: Signing (macOS)
-    platform: macos
-    items:
-      - command: security find-identity -v -p codesigning
-        label: Apple Distribution certificate
-        contains: Apple Distribution
-  ```
-- **`delegate`** — the type key value is the display name. Required **`dir:`**
-  (member path). Optional **`config:`** — path to the child config, default
-  `triage.yaml` under `dir:`. Loads and runs the child in-process; active
-  `--profile` is forwarded. One pass/fail for the whole child subtree; human
-  output uses the **delegate tree** (§7.2). Child configs may include their own
-  `delegate` checks (same rules, nested arbitrarily deep). Sibling delegates
-  **execute concurrently** with each other and with local checks (§7.2) and are
-  **rendered** depth-first in list order. No auto-discovery; cycles (A→B→A) →
-  config error (exit `3`). No dedup across levels.
-
-```yaml
-default:
-  - tool: make
-    group: Workspace
-  - command: make doctor MODE={{profile}}
-    label: vitalink-web
-    dir: vitalink-web
-    group: Members
-  - delegate: vitalink-api
-    dir: vitalink-api
-  - delegate: vitalink-infra
-    dir: vitalink-infra
-```
+**Cross-repo:** `delegate` for nested configs; `command` + `dir:` for
+`make doctor` stragglers (flat line in parent board). See [`config.md`](config.md)
+and [`examples/`](examples/).
 
 ## 6. Plugins
 

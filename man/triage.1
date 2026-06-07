@@ -1,0 +1,231 @@
+.Dd $Mdocdate$
+.Dt TRIAGE 1
+.Os
+.Sh NAME
+.Nm triage
+.Nd the environment doctor — declarative prerequisite checks
+.Sh SYNOPSIS
+.Nm
+.Op Ar config
+.Nm
+.Op Fl -profile Ar name
+.Op Fl -var Ar name=value
+.Op Fl -json
+.Op Fl -quiet
+.Op Fl -strict
+.Op Fl -severity
+.Op Fl -jobs Ar n
+.Op Fl j Ar n
+.Op Fl -no-color
+.Op Fl -command-log Op Ar path
+.Op Fl -verbose
+.Op Fl -no-update-check
+.Nm
+.Op Fl -version
+.Nm
+.Op Fl -help
+.Sh DESCRIPTION
+.Nm
+reads a declarative
+.Pa triage.yaml
+in your repo and reports what's present, what's missing, and exactly how to
+fix it — in a grouped
+.Bq [✓] / [✗] / [!]
+board.
+.Pp
+Run from the directory that contains the config (or pass the path).
+.Nm
+does not search parent directories.
+.Pp
+This page documents the CLI.
+For the full config file format, see
+.Xr triage 5 .
+.Sh CONFIGURATION
+A
+.Pa triage.yaml
+file is a YAML mapping.
+Checks live under profile keys — never at the root.
+.Pp
+Reserved top-level keys:
+.Bl -tag -width include -compact
+.It Sy include
+Merge other YAML files in order.
+.It Sy vars
+Reusable string values for
+.Sy {{ name }}
+templates.
+.It Sy default
+The profile run when
+.Fl -profile
+is omitted (may be empty).
+.It Ar any other key
+A profile name
+.Pq Sy release , Sy ci , No ...
+selected with
+.Fl -profile .
+.El
+.Pp
+Check types (type-as-key):
+.Bl -tag -width delegate -compact
+.It Sy tool
+Command on
+.Pa PATH ;
+optional version pin.
+.It Sy env
+Environment variable set or unset.
+.It Sy path
+File or directory exists (glob ok).
+.It Sy one_of
+At least one alternative present.
+.It Sy command
+Run an explicit shell snippet; assert exit or stdout.
+.It Sy delegate
+Load and run a child
+.Pa triage.yaml .
+.It Sy group
+Named section via
+.Sy items
+list.
+.El
+.Pp
+Severity (orthogonal to profile):
+.Bl -tag -width error -compact
+.It Sy error
+Required — fails the run (default).
+.It Sy warn
+Recommended — shows [!] but exits 0 unless
+.Fl -strict .
+.It Sy info
+FYI only — never fails.
+.El
+.Pp
+Minimal example:
+.Bd -literal -offset indent
+default:
+  - tool: git
+  - tool: go
+    version_from: .go-version
+  - tool: golangci-lint
+    severity: warn
+    hint: brew install golangci-lint
+.Ed
+.Pp
+See
+.Xr triage 5
+.Pq Sy man 5 triage
+for every field, composition
+.Pq Sy include , Sy extends , Sy add
+templates, and workspace patterns.
+.Sh OPTIONS
+.Bl -tag -width Fl -compact
+.It Fl -profile Ar name
+Profile to run (default:
+.Sy default ) .
+.It Fl -var Ar name=value
+Set a template variable; repeatable; overrides
+.Sy vars
+in config.
+.It Fl -json
+Machine-readable JSON instead of the board.
+.It Fl -quiet
+Suppress passing checks; show only failures and summary.
+.It Fl -strict
+Treat
+.Sy warn
+as
+.Sy error .
+.It Fl -severity
+Graded exit ladder: 0 clean / 1 warnings / 2 errors / 3 config.
+.It Fl j Ar n , Fl -jobs Ar n
+Max concurrent checks (default ≈ CPU count, capped at 8).
+.Ar 1
+= fully sequential.
+.It Fl -no-color
+Disable ANSI color (auto when stdout is not a TTY).
+.It Fl -command-log Op Ar path
+Stream probe output to a log file (default
+.Pa .triage/commands.log
+when flag given without value); truncated each run.
+.It Fl -verbose
+On failure, replay command output to stderr.
+.It Fl -no-update-check
+Skip the cached GitHub release staleness banner.
+.It Fl -version
+Print build version and exit.
+.It Fl -help
+Print usage and exit.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width TRIAGE_NO_UPDATE_CHECK -compact
+.It Ev TRIAGE_NO_UPDATE_CHECK
+When set to
+.Li 1 ,
+skip the update-availability banner (same as
+.Fl -no-update-check ) .
+.It Ev NO_COLOR
+When set, disable color output.
+.It Ev CI , Ev GITHUB_ACTIONS
+When set, skip the update-availability banner.
+.El
+.Sh FILES
+Discovery order in the current working directory (or inside a directory
+argument):
+.Pa triage.yaml ,
+.Pa triage.yml ,
+.Pa .triage.yaml ,
+.Pa .triage.yml .
+.Sh EXIT STATUS
+.Bl -tag -width 130 -compact
+.It 0
+All checks pass (warnings do not fail unless
+.Fl -strict
+or
+.Fl -severity ) .
+.It 1
+At least one
+.Sy error
+check failed (pass-fail mode).
+.It 2
+Errors with
+.Fl -severity
+enabled.
+.It 3
+Config or usage error.
+.It 130
+Interrupted (SIGINT / SIGTERM).
+.El
+.Sh EXAMPLES
+Run checks in the current directory:
+.Bd -literal -offset indent
+triage
+.Ed
+.Pp
+Stricter preflight profile:
+.Bd -literal -offset indent
+triage --profile release
+.Ed
+.Pp
+Explicit config path:
+.Bd -literal -offset indent
+triage path/to/triage.yaml
+triage path/to/repo/
+.Ed
+.Pp
+CI-friendly JSON:
+.Bd -literal -offset indent
+triage --profile ci --json --strict
+.Ed
+.Sh SEE ALSO
+.Xr triage 5
+.Pq Sy man 5 triage
+.Pp
+.Lk https://github.com/lolay/triage "Source code, issues, and documentation"
+.Pp
+The
+.Sy specs/
+directory in the source repository documents the config format
+.Pq Pa specs/config.md ,
+product design
+.Pq Pa specs/product.md ,
+and the maintainer release process
+.Pq Pa specs/releasing.md .

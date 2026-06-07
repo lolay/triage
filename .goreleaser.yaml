@@ -1,12 +1,11 @@
-# goreleaser configuration (v2 schema) — m1 STUB.
+# goreleaser configuration (v2 schema) — m5 release pipeline.
 #
-# Defines the cross-platform build matrix (darwin/linux × amd64/arm64) and
-# stamps the same internal/buildinfo vars the Makefile does, so `goreleaser
-# check` and `goreleaser build --snapshot` (make snapshot) work locally.
-#
-# Publishing is intentionally disabled here: the Homebrew tap, archives wiring,
-# signing, and the GitHub release are added in m4. Until then this only
-# validates and builds snapshots — it never publishes.
+# Build matrix (darwin/linux × amd64/arm64), GitHub release assets, Homebrew tap
+# commit, and man pages. Publishing order inside `goreleaser release`:
+#   1. Build + archive + checksum (local, no remote)
+#   2. GitHub Release upload (lolay/triage)
+#   3. Homebrew tap commit (lolay/homebrew-tap) — after release URLs exist
+# Floating tags (v0.3, v0) are promoted in .github/workflows/release.yml last.
 version: 2
 
 project_name: triage
@@ -41,6 +40,11 @@ archives:
     formats:
       - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - src: man/triage.1
+        dst: triage.1
+      - src: man/triage.5
+        dst: triage.5
 
 checksum:
   name_template: checksums.txt
@@ -51,7 +55,27 @@ snapshot:
 changelog:
   sort: asc
 
-# No publishing until m4 (tap + signed release). Keeps `goreleaser release`
-# from creating a GitHub release while the stub is in place.
 release:
-  disable: true
+  github:
+    owner: lolay
+    name: triage
+  extra_files:
+    - glob: man/triage.1
+    - glob: man/triage.5
+
+homebrew_casks:
+  - name: triage
+    repository:
+      owner: lolay
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/lolay/triage"
+    description: "The environment doctor — declarative prerequisite checks"
+    commit_author:
+      name: triage-release-bot
+      email: triage-release-bot@lolay.com
+    commit_msg_template: "triage {{ .Version }}"
+    manpages:
+      - man/triage.1
+      - man/triage.5

@@ -24,6 +24,7 @@ import (
 	"github.com/lolay/triage/internal/config"
 	"github.com/lolay/triage/internal/engine"
 	"github.com/lolay/triage/internal/report"
+	"github.com/lolay/triage/internal/updatecheck"
 )
 
 // Execute runs the CLI with the given arguments and returns the process exit
@@ -205,6 +206,14 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 		}
 	} else {
 		isTTY := isTerminal(stdout)
+		if updatecheck.ShouldCheck(f.NoUpdateCheck, f.JSON, isTTY, updatecheck.InCI()) {
+			if notice := updatecheck.Notice(ctx, updatecheck.Options{
+				CurrentVersion: buildinfo.Version,
+			}); notice != nil {
+				_, _ = fmt.Fprintln(stdout, notice.FormatBanner())
+				_, _ = fmt.Fprintln(stdout)
+			}
+		}
 		opts.IsTTY = isTTY
 		if isTTY {
 			sink := report.NewTTYSink(stdout, opts)

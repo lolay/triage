@@ -1,6 +1,6 @@
 # CI gate: humans, agents, and CI all run `make ci`, so a green local gate
-# matches CI. A separate job validates the goreleaser stub via `goreleaser
-# check` (no publish — release wiring lands in m4).
+# matches CI. A separate job validates the goreleaser config via `goreleaser
+# check` (no publish — release wiring is in release.yml, m5).
 name: ci
 
 on:

@@ -39,8 +39,8 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 - s1 — [exec] `goreleaser` build matrix (macOS+Linux × arm64/x64 for v1) + GitHub
   release assets + manpage; release pipeline promotes **floating git tags**
   (`v0.3`, `v0`) alongside exact `v0.3.1` on `lolay/triage`
-- s2 — [exec] Homebrew tap formula + automated version bump on release (goreleaser → tap PR)
-- s3 — [fast] `curl | sh` installer (optional convenience alongside tap + release assets)
+- s2 — [exec] Homebrew tap formula + automated version bump on release (goreleaser → direct tap commit on `lolay/homebrew-tap`)
+- s3 — ~~[fast] `curl | sh` installer~~ **dropped** — tap + GitHub release assets only
 - s4 — [fast] Lightweight update banner: cached GitHub `releases/latest` check,
   one-liner above board, `TRIAGE_NO_UPDATE_CHECK` / `--no-update-check` (§7.2)
 

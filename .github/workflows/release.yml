@@ -1,0 +1,83 @@
+# Release pipeline for lolay/triage.
+#
+# Trigger: push a semver tag vX.Y.Z (or workflow_dispatch for manual re-run).
+#
+# Remote pushes happen LAST and in order so a partial failure never leaves one
+# marketplace/channel updated while another is not:
+#   Phase 1 — goreleaser: build + validate all artifacts (no remote until green)
+#   Phase 2 — GitHub Release assets (inside goreleaser)
+#   Phase 3a — Homebrew tap commit (inside goreleaser, after release URLs exist)
+#   Phase 3b — floating tags vX.Y / vX (this workflow, last)
+#
+# See specs/releasing.md for the full maintainer guide.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GIT_AUTHOR_NAME: triage-release-bot
+  GIT_AUTHOR_EMAIL: triage-release-bot@lolay.com
+  GIT_COMMITTER_NAME: triage-release-bot
+  GIT_COMMITTER_EMAIL: triage-release-bot@lolay.com
+
+jobs:
+  release:
+    name: goreleaser release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: .go-version
+          cache: true
+          cache-dependency-path: go.mod
+
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+  promote-floating-tags:
+    name: promote floating tags
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') &&
+      !contains(github.ref, '-')
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Force-push floating major/minor tags
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          MAJOR="${VERSION%%.*}"
+          MINOR="${VERSION%.*}"
+
+          git config user.name "triage-release-bot"
+          git config user.email "triage-release-bot@lolay.com"
+
+          # Moving minor pointer (e.g. v0.3 -> latest 0.3.x).
+          git tag --force "v${MINOR}"
+          git push --force origin "v${MINOR}"
+
+          # Moving major pointer (e.g. v0 -> latest 0.x).
+          git tag --force "v${MAJOR}"
+          git push --force origin "v${MAJOR}"

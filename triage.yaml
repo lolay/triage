@@ -5,7 +5,7 @@
 # board on a set-up machine. `make doctor MODE=release` additionally checks the
 # tooling needed to cut a release.
 #
-# Canonical location: repo root. See specs/product.md §4 for the full schema and
+# Canonical location: repo root. See specs/config.md for the full config reference and
 # examples/ for (fictional) configs exercising every feature.
 
 default:

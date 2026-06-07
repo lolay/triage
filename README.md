@@ -51,7 +51,10 @@ triage (profile: default)
 
 ```sh
 # Released: install from the dedicated tap (not homebrew-core)
-brew install lolay/tap/triage
+brew install --cask lolay/tap/triage
+
+# Or download a release tarball from GitHub Releases
+# https://github.com/lolay/triage/releases
 
 # Pre-release / hacking: build from source (make is the source of truth)
 git clone https://github.com/lolay/triage.git && cd triage
@@ -63,6 +66,10 @@ triage                                 # reads triage.yaml in the current direct
 triage --profile release               # stricter preflight before you ship
 triage path/to/triage.yaml             # explicit config file or directory
 ```
+
+After `brew install --cask lolay/tap/triage` (or extracting a release tarball with the
+included man pages), `man triage` shows the CLI manual and `man 5 triage` shows
+the full config file format. Man page sources: [`man/`](./man/).
 
 Run from the directory that contains the config (or pass the path). `triage` does
 not search parent directories.
@@ -98,8 +105,10 @@ release:
       hint: gcloud auth login
 ```
 
-See the full schema in [`specs/product.md`](./specs/product.md) §4–§7, and one
-worked config per repo shape under [`examples/`](./examples).
+See the full config reference in [`specs/config.md`](./specs/config.md) (and
+`man 5 triage` after install). JSON Schema:
+[`schema/triage.schema.json`](./schema/triage.schema.json). Worked examples:
+[`examples/`](./examples).
 
 ## Exit codes
 
@@ -129,6 +138,13 @@ output from `command` checks is not printed by default; use `--command-log` to
 stream probe output to a file (overwritten each run; blocks are written in list
 order so the file is identical regardless of `--jobs`), or `--verbose` to replay
 failures on stderr.
+
+## Releasing
+
+Maintainers: all artifacts build and validate first; **remote and marketplace
+pushes happen last, in order** (GitHub Release → Homebrew tap → floating tags)
+so a partial failure never leaves one channel updated while another is not.
+Full process: [`specs/releasing.md`](./specs/releasing.md).
 
 ## Status
 

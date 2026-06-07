@@ -1,0 +1,289 @@
+.Dd $Mdocdate$
+.Dt TRIAGE 5
+.Os
+.Sh NAME
+.Nm triage
+.Nd triage.yaml configuration file format
+.Sh DESCRIPTION
+A
+.Pa triage.yaml
+file declares environment prerequisites for a project — tools,
+versions, env vars, files, platform-guarded commands, and cross-repo delegation.
+.Pp
+This page documents the file format.
+For the CLI surface, see
+.Xr triage 1 .
+.Pp
+The canonical prose source is
+.Pa specs/config.md
+in the source repository; this page is a hand-authored reference distilled
+from it.
+.Sh FILE STRUCTURE
+Root is always a mapping.
+Checks live under profile keys — never at the root.
+.Pp
+Config file names (discovery order):
+.Pa triage.yaml ,
+.Pa triage.yml ,
+.Pa .triage.yaml ,
+.Pa .triage.yml .
+One entry file per run; no parent-directory walk-up unless you pass an explicit
+path to
+.Xr triage 1 .
+.Sh PROFILES
+.Bl -tag -width default -compact
+.It Sy default
+Profile run when
+.Fl -profile
+is omitted.
+May be omitted (treated as empty).
+.It Ar name
+Any other top-level key (except
+.Sy include
+and
+.Sy vars )
+is a profile name — e.g.\&
+.Sy release ,
+.Sy ci .
+Select with
+.Fl -profile Ar name
+on
+.Xr triage 1 .
+.El
+.Pp
+Profile value is either:
+.Bl -bullet -compact
+.It
+A check list.
+.It
+.Ql { extends: [profiles\[u2026]], add: [checks\[u2026]] }
+when inheriting.
+Use
+.Sy add
+(not
+.Sy checks )
+with
+.Sy extends .
+.El
+.Sh COMPOSITION
+Two axes — separate mechanisms:
+.Bl -tag -width extends -compact
+.It Sy include
+Top-level list of YAML files merged in order.
+Collisions emit load-time warnings; later wins.
+.It Sy extends
+Per-profile inheritance within the merged config.
+Same collision rules.
+.El
+.Sh VARS
+Top-level
+.Sy vars
+mapping of reusable strings.
+Reference in check fields with
+.Sy {{ var_name }} .
+.Pp
+Precedence: config
+.Sy vars
+< CLI
+.Fl -var
+< built-ins
+.Pq Sy profile , Sy os .
+.Pp
+Expansion is fail-closed on undefined or malformed tokens.
+Vars are not recursive.
+.Sh CHECK TYPES
+Each check uses a type-as-key entry.
+Optional fields apply to any check unless noted.
+.Sh COMMON FIELDS
+.Bl -tag -width platform -compact
+.It Sy severity
+.Sy error ,
+.Sy warn ,
+or
+.Sy info
+(default
+.Sy error ) .
+.It Sy platform
+.Sy macos ,
+.Sy linux ,
+or
+.Sy windows
+— string or list; skip on non-matching OS.
+.It Sy hint
+Remediation text on failure.
+.It Sy dir
+Working directory (default: config directory).
+.It Sy serial
+Opt out of concurrent execution for this check or group.
+.It Sy group
+Legacy string — flat output grouping; prefer structural
+.Sy group
+container.
+.El
+.Ss tool
+Command present on
+.Pa PATH .
+Optional version constraint (pick one):
+.Bl -tag -width version_from -compact
+.It Sy version
+npm-style semver range, quoted in YAML
+.Pq e.g.\& Ql ">=1.26" .
+.It Sy version_from
+Read pin from a file
+.Pq e.g.\& Pa .go-version .
+.El
+.Bd -literal -offset indent
+- tool: go
+  version_from: .go-version
+  hint: https://go.dev/dl
+.Ed
+.Ss env
+Environment variable presence or absence.
+.Bl -tag -width unset -compact
+.It Cm env\&: Ar VAR
+Variable must be present (default).
+Optional
+.Sy matches
+regex on value.
+.It Cm unset\&: Li true
+Variable must not be in the environment.
+Mutually exclusive with
+.Sy matches .
+.El
+.Ss path
+File or directory must exist.
+Globs supported.
+Relative paths resolve from
+.Sy dir
+or config directory.
+.Ss one_of
+At least one alternative must pass — either tool names or sub-checks:
+.Bd -literal -offset indent
+- one_of: [pnpm, npm]
+- one_of:
+    - env: SOPS_AGE_KEY
+    - path: ~/.config/sops/age/keys.txt
+.Ed
+.Ss command
+Run an explicitly-interpreted snippet.
+Requires
+.Sy label .
+No implicit shell —
+.Sy interp
+selects
+.Sy sh
+or
+.Sy pwsh
+(default
+.Sy sh ) .
+.Pp
+Assertions: exit 0 (default),
+.Sy contains ,
+.Sy matches ,
+or
+.Sy exit .
+Optional
+.Sy with_env
+map for this command only.
+.Bd -literal -offset indent
+- command: security find-identity -v -p codesigning
+  label: Apple Distribution certificate
+  contains: Apple Distribution
+  platform: macos
+.Ed
+.Ss delegate
+Load and run a child config in-process.
+Required
+.Sy dir ;
+optional
+.Sy config
+(default
+.Pa triage.yaml
+under
+.Sy dir ) .
+Active profile is forwarded.
+Nested delegates allowed; cycles are config errors.
+.Bd -literal -offset indent
+- delegate: vitalink-api
+  dir: vitalink-api
+.Ed
+.Ss group
+Named container;
+.Sy items
+holds child checks and nested groups.
+Optional
+.Sy platform
+skips the whole section on non-matching OS.
+.Bd -literal -offset indent
+- group: Core toolchain
+  items:
+    - tool: git
+    - tool: go
+      version_from: .go-version
+.Ed
+.Sh SEVERITY
+Orthogonal to profile — profile selects which checks run;
+severity decides how failures are treated.
+.Bl -tag -width warn -compact
+.It Sy error
+Required; fails the run (default).
+.It Sy warn
+Recommended; shows [!] but does not fail unless
+.Fl -strict
+on
+.Xr triage 1 .
+.It Sy info
+FYI only.
+.El
+.Pp
+.Cm required\&: Li true|false
+sugar
+.Pq Sy true No -> Sy error , Sy false No -> Sy warn .
+.Sh EXAMPLES
+Single-profile repo:
+.Bd -literal -offset indent
+default:
+  - tool: git
+  - tool: go
+    version_from: .go-version
+  - tool: golangci-lint
+    severity: warn
+    hint: brew install golangci-lint
+.Ed
+.Pp
+Multi-profile with inheritance:
+.Bd -literal -offset indent
+include:
+  - base.yaml
+
+default:
+  - tool: go
+    version_from: .go-version
+
+release:
+  extends: [default]
+  add:
+    - tool: sops
+      hint: brew install sops
+.Ed
+.Pp
+Workspace with delegation:
+.Bd -literal -offset indent
+default:
+  - delegate: api
+    dir: api
+  - command: make doctor MODE={{profile}}
+    label: legacy-web
+    dir: legacy-web
+.Ed
+.Sh SEE ALSO
+.Xr triage 1
+.Pq Sy man 1 triage
+.Pp
+.Pa specs/config.md
+in the source repository — full config reference in prose.
+.Pp
+.Pa schema/triage.schema.json
+— JSON Schema for editor validation.
+.Pp
+.Lk https://github.com/lolay/triage/tree/main/examples "Worked example configs"
