@@ -17,7 +17,7 @@ before:
 
 builds:
   - id: triage
-    main: ./cmd/triage
+    main: .
     binary: triage
     env:
       - CGO_ENABLED=0

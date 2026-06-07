@@ -1,6 +1,6 @@
 // Package cli wires the triage command-line interface using cobra.
 //
-// Entry point: Execute (called by cmd/triage/main.go). The testable variant
+// Entry point: Execute (called by main.go). The testable variant
 // ExecuteWith accepts io.Writers so tests can capture output without touching
 // os.Stdout/os.Stderr. The full flag surface, config discovery, and exit-code
 // policy (§7.3) are all implemented here; check execution lives in
@@ -27,7 +27,7 @@ import (
 )
 
 // Execute runs the CLI with the given arguments and returns the process exit
-// code. It is the only symbol imported by cmd/triage/main.go.
+// code. It is the only symbol imported by main.go.
 func Execute(args []string) int {
 	return ExecuteWith(args, os.Stdout, os.Stderr)
 }

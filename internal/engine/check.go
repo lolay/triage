@@ -49,9 +49,3 @@ type cmdLogEntry struct {
 	run    string
 	output []byte
 }
-
-// Check is the interface every check type must implement.
-// Real check types land in m2+; kept for potential future use.
-type Check interface {
-	Run() Result
-}

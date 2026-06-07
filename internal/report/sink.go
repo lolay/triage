@@ -20,36 +20,6 @@ type Sink interface {
 	End(results []engine.Result)
 }
 
-// StaticSink buffers all results then renders the full board at End. Used for
-// non-TTY stdout and --json (which bypasses the Sink entirely).
-type StaticSink struct {
-	w    io.Writer
-	opts BoardOpts
-}
-
-// NewStaticSink creates a StaticSink writing to w.
-func NewStaticSink(w io.Writer, opts BoardOpts) *StaticSink {
-	return &StaticSink{w: w, opts: opts}
-}
-
-func (s *StaticSink) Begin(profile string) {
-	p := profile
-	if p == "" {
-		p = "default"
-	}
-	fmt.Fprintf(s.w, "triage (profile: %s)\n", p)
-	fmt.Fprintln(s.w)
-}
-
-func (s *StaticSink) Emit(_ engine.Result) {} // buffered; rendered in End
-
-func (s *StaticSink) End(results []engine.Result) {
-	renderResults(s.w, results, s.opts)
-	fmt.Fprintln(s.w)
-	printSummary(s.w, results, s.opts)
-	printRemediation(s.w, results, s.opts)
-}
-
 // TTYSink streams results to a TTY with pending `[…]` lines that are rewritten
 // in place to the final glyph once the check completes.
 //
@@ -87,8 +57,8 @@ func (s *TTYSink) Emit(r engine.Result) {
 	// (future); for m2 the runner is synchronous, so the TTY sink adds colors
 	// and live flushing but not actual async pending lines.
 	//
-	// This is still TTY-aware: the difference from StaticSink is that we print
-	// each line as it arrives (streaming) rather than buffering all results.
+	// This is still TTY-aware: we print each line as it arrives (streaming)
+	// rather than buffering all results for a single Board render at End.
 	if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
 		indent := strings.Repeat("    ", r.Depth)
 		glyph := glyphFor(r, s.opts)

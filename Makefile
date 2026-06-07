@@ -47,7 +47,7 @@ init: ## Download Go module dependencies
 	go mod download
 
 build: ## Compile the triage binary into bin/ (stamps build metadata)
-	go build -ldflags '$(LDFLAGS)' -o $(BIN_DIR)/$(BINARY) ./cmd/triage
+	go build -ldflags '$(LDFLAGS)' -o $(BIN_DIR)/$(BINARY) .
 
 lint: ## Static checks: gofmt drift + go vet + golangci-lint (if installed)
 	@set -o pipefail; \

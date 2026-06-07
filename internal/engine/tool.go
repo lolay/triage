@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -245,6 +244,3 @@ func checkTool(ctx context.Context, name, constraint, hint string, opts RunnerOp
 		Message:  msg,
 	}
 }
-
-// devNull is an io.Writer that discards all output (subprocess I/O default).
-var devNull io.Writer = io.Discard

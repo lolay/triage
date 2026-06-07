@@ -940,7 +940,7 @@ Planned in m1 (tracked there):
 ```
 go.mod, .go-version     Go module + pinned toolchain
 Makefile                single source of truth for build verbs (see below)
-cmd/triage, internal/   CLI + check engine
+main.go, internal/      CLI + check engine
 schema/triage.schema.json   JSON Schema for editor validation
 .github/workflows/      ci, release (m1/m5); renovate optional
 .github/CODEOWNERS      @GaryRudolph (default owner for all paths)

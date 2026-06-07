@@ -5,9 +5,9 @@
 //     glyph, indented children, non-pass lines with hints inline, trailing
 //     summary line, and the read-only "To fix, run:" remediation block.
 //     ANSI color is gated on opts.IsTTY && !opts.NoColor.
-//   - Sink: output interface with StaticSink (non-TTY, buffers nothing —
-//     delegates to Board at End) and TTYSink (streaming, prints each line as
-//     it arrives). The CLI chooses based on term.IsTerminal.
+//   - Sink: output interface with TTYSink (streaming, prints each line as
+//     it arrives on TTY stdout). Non-TTY stdout calls Board directly. The CLI
+//     chooses based on term.IsTerminal.
 //   - JSON: machine-readable report aligned to spec §7.3 shape
 //     (group, name, severity, status, detail, command_log_path). The
 //     command_log_path field is populated on failing results that have

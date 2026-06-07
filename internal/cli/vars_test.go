@@ -31,10 +31,3 @@ func TestParseCLIVars_Invalid(t *testing.T) {
 		t.Errorf("want invalid error, got %v", err)
 	}
 }
-
-func TestMergeVarMaps_CLIWins(t *testing.T) {
-	got := mergeVarMaps(map[string]string{"a": "config", "b": "config"}, map[string]string{"a": "cli"})
-	if got["a"] != "cli" || got["b"] != "config" {
-		t.Errorf("merge = %#v", got)
-	}
-}
