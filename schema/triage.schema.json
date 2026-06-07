@@ -85,6 +85,10 @@
         "dir": {
           "description": "Working directory for the check; relative paths resolve from here.",
           "type": "string"
+        },
+        "serial": {
+          "description": "Opt this check (or, on a group, its whole subtree) out of concurrency: run it as a barrier under a global serial lock. Use only for a shared scarce resource (exclusive lock, rate-limited auth, keychain). Default is parallel.",
+          "type": "boolean"
         }
       }
     },

@@ -103,9 +103,11 @@ func shellQuote(s string) string {
 
 // checkCommand evaluates a command: check (spec §5). The check arrives with
 // template vars already expanded. It resolves the working directory, invokes
-// the interpreter (default: sh), asserts exit/contains/matches, and writes a
-// CommandLog block when active.
-func (r *Runner) checkCommand(ctx context.Context, c config.Check) Result {
+// the interpreter (default: sh) while holding a semaphore token, and asserts
+// exit/contains/matches. When --command-log is active it stashes a log block on
+// the result (res.cmdLog) rather than writing inline, so RunContext can flush
+// blocks in list order — keeping the log byte-identical across --jobs.
+func (r *Runner) checkCommand(ctx context.Context, c config.Check) (res Result) {
 	runCmd := r.opts.RunCommand
 	if runCmd == nil {
 		runCmd = defaultRunCommand
@@ -135,12 +137,16 @@ func (r *Runner) checkCommand(ctx context.Context, c config.Check) Result {
 		dir = filepath.Join(r.opts.BaseDir, dir)
 	}
 
+	r.acquire()
 	stdout, exitCode, err := runCmd(ctx, interp, script, dir, cmdEnv)
+	r.release()
 
-	// Write to CommandLog regardless of pass/fail.
+	// Stash the CommandLog block on the result; RunContext writes it in list
+	// order. The named return lets every return path below pick up the entry.
 	if r.opts.CommandLog != nil {
 		runLine := fmt.Sprintf("%s%s -c %q", envPrefix(cmdEnv), interp, script)
-		r.opts.CommandLog.WriteBlock(label, dir, runLine, []byte(stdout))
+		entry := &cmdLogEntry{label: label, cwd: dir, run: runLine, output: []byte(stdout)}
+		defer func() { res.cmdLog = entry }()
 	}
 
 	if err != nil {

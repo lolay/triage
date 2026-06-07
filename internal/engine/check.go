@@ -34,6 +34,20 @@ type Result struct {
 	// at captureCap bytes). Set on failure for --verbose replay and --json
 	// detail enrichment. Empty for instant checks (env, path, tool presence).
 	Output string
+
+	// cmdLog carries the data needed to materialize a --command-log block. It
+	// is stashed on command-check results during execution (which may be
+	// concurrent) and written out by RunContext in list order, so the log file
+	// bytes are identical regardless of --jobs. nil when no log is active.
+	cmdLog *cmdLogEntry
+}
+
+// cmdLogEntry is one deferred --command-log block, written in list order.
+type cmdLogEntry struct {
+	label  string
+	cwd    string
+	run    string
+	output []byte
 }
 
 // Check is the interface every check type must implement.

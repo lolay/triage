@@ -94,6 +94,10 @@ type RunnerOpts struct {
 	// delegate cycle-detection set so a child delegating back to the root config
 	// is caught.
 	ConfigPath string
+	// Jobs is the max number of concurrent subprocess spawns (the bounded worker
+	// pool size). 0 means auto = min(NumCPU, 8). 1 forces the dedicated
+	// sequential path. The whole delegate tree shares one budget.
+	Jobs int
 }
 
 // CurrentPlatform returns the normalised runtime OS string: darwin → "macos";
@@ -115,8 +119,8 @@ func defaultLookPath(name string) (string, error) {
 	return exec.LookPath(name)
 }
 
-func defaultRunProbe(_ context.Context, name string, args []string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func defaultRunProbe(ctx context.Context, name string, args []string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
 	if len(out) > captureCap {

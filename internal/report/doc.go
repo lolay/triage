@@ -20,5 +20,13 @@
 // m3 additions: JSON enriched with command_log_path; board is unchanged since
 // platform-skipped checks never reach the report layer.
 //
-// Delegate-tree rendering (m5) and async TTY pending/back-update are deferred.
+// m4 additions: KindDelegate renders as an indented summary line (worst-child
+// glyph) with the child subtree nested beneath it, at the depth the engine
+// assigns; delegate summaries and group headers are skipped in the summary
+// counts (their children are the counted leaves). JSON gains depth and kind
+// (check/group/delegate) so consumers can reconstruct the tree. Because the
+// engine materializes results in list order regardless of --jobs, the renderer
+// is unchanged by concurrency and golden output stays byte-stable.
+//
+// Async TTY pending/back-update streaming is still deferred.
 package report

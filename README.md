@@ -39,6 +39,12 @@ triage (profile: default)
   a live `[…]` summary) — a peer in the profile list. Slow checks show `[…]` while
   running, then flip to `[✓]`/`[✗]` on a TTY. `make doctor` stragglers use
   `command` + `dir:` (flat line, same pending behavior).
+- **Fast by default.** Checks are read-only, so they run through a bounded
+  worker pool (`--jobs`/`-j`, default ≈ NumCPU) — sibling delegates and local
+  checks in parallel. Output always **materializes in list order**, so it's
+  byte-identical at any `--jobs` (`-j 1` is fully sequential). Pin a check or
+  group with `serial: true` for a shared scarce resource (lock, rate-limited
+  auth, keychain).
 - **Cross-platform.** macOS and Linux today; Windows coming soon.
 
 ## Quick start
@@ -110,12 +116,17 @@ warnings vs errors:
 | `3` | Config/usage error |
 
 `--strict` escalates warnings to errors. `--json` emits a machine-readable
-report; `--quiet` hides passes. On a TTY,
+report (each result carries `depth` + `kind` so the delegate tree is
+reconstructable); `--quiet` hides passes. `--jobs`/`-j` sets the worker-pool
+size (default ≈ NumCPU, capped at 8; `1` = fully sequential; values below 1 are
+a usage error). An interrupted run (Ctrl-C / SIGTERM) prints the partial board
+and exits `130`. On a TTY,
 `triage` may show a one-line notice when a newer release is available (cached
 GitHub check; `TRIAGE_NO_UPDATE_CHECK=1` or `--no-update-check` to disable).
 Subprocess
 output from `command` checks is not printed by default; use `--command-log` to
-stream probe output to a file (overwritten each run), or `--verbose` to replay
+stream probe output to a file (overwritten each run; blocks are written in list
+order so the file is identical regardless of `--jobs`), or `--verbose` to replay
 failures on stderr.
 
 ## Status

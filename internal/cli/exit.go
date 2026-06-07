@@ -7,10 +7,11 @@ import "github.com/lolay/triage/internal/engine"
 // Default (pass-fail) mode: 0 = all pass, 1 = any failure, 3 = config/usage error.
 // Severity mode (--severity flag): 0 = clean, 1 = warnings only, 2 = errors, 3 = config/usage error.
 const (
-	ExitOK         = 0 // all checks pass
-	ExitFail       = 1 // any check fails (default pass-fail mode)
-	ExitError      = 2 // --severity: ≥1 error-severity failure
-	ExitUsageError = 3 // config not found, flag parse error, or usage error
+	ExitOK          = 0   // all checks pass
+	ExitFail        = 1   // any check fails (default pass-fail mode)
+	ExitError       = 2   // --severity: ≥1 error-severity failure
+	ExitUsageError  = 3   // config not found, flag parse error, or usage error
+	ExitInterrupted = 130 // run cancelled by SIGINT/SIGTERM (128 + signal)
 )
 
 // ExitCode computes the process exit code from check results and active flags.

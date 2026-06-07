@@ -66,8 +66,8 @@ lint: ## Static checks: gofmt drift + go vet + golangci-lint (if installed)
 format: ## Auto-fix formatting (gofmt -w .)
 	gofmt -w .
 
-test: ## Run all tests
-	go test ./...
+test: ## Run all tests (race detector on; catches pool data races)
+	go test -race ./...
 
 ci: build lint test ## Full pre-push gate: build, lint, test (what CI runs)
 

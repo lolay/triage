@@ -12,4 +12,5 @@ type Flags struct {
 	CommandLog    string // "" = disabled; path = stream probe output there each run
 	Verbose       bool
 	NoUpdateCheck bool
+	Jobs          int // max concurrent checks; 0 = auto (min NumCPU, 8); 1 = sequential
 }

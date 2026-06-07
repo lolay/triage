@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -182,40 +183,77 @@ func TestGolden(t *testing.T) {
 				t.Setenv("TRIAGE_TEST_GOOS", tc.goos)
 			}
 
-			var stdout, stderr bytes.Buffer
-			exitCode := cli.ExecuteWith(args, &stdout, &stderr)
-
-			if exitCode != tc.wantExit {
-				t.Errorf("exit code = %d, want %d\nstdout:\n%s\nstderr:\n%s",
-					exitCode, tc.wantExit, stdout.String(), stderr.String())
-			}
-
-			if tc.noGolden {
-				return
-			}
-
 			goldenFile := filepath.Join(fixtureDir, "stdout.golden")
-			got := stdout.String()
 
 			if *update {
+				var stdout, stderr bytes.Buffer
+				if exitCode := cli.ExecuteWith(args, &stdout, &stderr); exitCode != tc.wantExit {
+					t.Errorf("exit code = %d, want %d\nstderr:\n%s", exitCode, tc.wantExit, stderr.String())
+				}
 				if err := os.MkdirAll(fixtureDir, 0o755); err != nil {
 					t.Fatalf("mkdir %s: %v", fixtureDir, err)
 				}
-				if err := os.WriteFile(goldenFile, []byte(got), 0o644); err != nil {
+				if err := os.WriteFile(goldenFile, stdout.Bytes(), 0o644); err != nil {
 					t.Fatalf("write golden %s: %v", goldenFile, err)
 				}
 				t.Logf("updated %s", goldenFile)
 				return
 			}
 
-			wantBytes, err := os.ReadFile(goldenFile)
-			if err != nil {
-				t.Fatalf("read golden %s: %v\n(run: go test -run TestGolden -update)", goldenFile, err)
+			// --jobs invariance (spec §7.2): run the fixture at -j 1 (the
+			// dedicated sequential oracle) and -j 8 (the concurrent pool); both
+			// must produce byte-identical stdout and the same exit code, and
+			// must match the golden.
+			for _, jobs := range []int{1, 8} {
+				t.Run(fmt.Sprintf("jobs=%d", jobs), func(t *testing.T) {
+					runArgs := append(append([]string{}, args...), "--jobs", strconv.Itoa(jobs))
+					var stdout, stderr bytes.Buffer
+					exitCode := cli.ExecuteWith(runArgs, &stdout, &stderr)
+
+					if exitCode != tc.wantExit {
+						t.Errorf("exit code = %d, want %d\nstdout:\n%s\nstderr:\n%s",
+							exitCode, tc.wantExit, stdout.String(), stderr.String())
+					}
+
+					if tc.noGolden {
+						return
+					}
+
+					got := stdout.String()
+					wantBytes, err := os.ReadFile(goldenFile)
+					if err != nil {
+						t.Fatalf("read golden %s: %v\n(run: go test -run TestGolden -update)", goldenFile, err)
+					}
+					if want := string(wantBytes); got != want {
+						t.Errorf("stdout mismatch at -j %d\n--- want ---\n%s\n--- got ---\n%s\n--- diff ---\n%s",
+							jobs, want, got, lineDiff(got, want))
+					}
+				})
 			}
-			want := string(wantBytes)
-			if got != want {
-				t.Errorf("stdout mismatch\n--- want ---\n%s\n--- got ---\n%s\n--- diff ---\n%s",
-					want, got, lineDiff(got, want))
+		})
+	}
+}
+
+// TestJobsFlagValidation asserts that an explicit --jobs below 1 is a usage
+// error (exit 3), while the default (auto) and explicit positive values run.
+func TestJobsFlagValidation(t *testing.T) {
+	fixture := filepath.Join("testdata", "empty-config")
+	cases := []struct {
+		name     string
+		args     []string
+		wantExit int
+	}{
+		{"zero", []string{fixture, "--jobs", "0"}, cli.ExitUsageError},
+		{"negative", []string{fixture, "-j", "-2"}, cli.ExitUsageError},
+		{"one", []string{fixture, "--jobs", "1"}, cli.ExitOK},
+		{"eight", []string{fixture, "-j", "8"}, cli.ExitOK},
+		{"default", []string{fixture}, cli.ExitOK},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if got := cli.ExecuteWith(tc.args, &stdout, &stderr); got != tc.wantExit {
+				t.Errorf("exit = %d, want %d (stderr: %s)", got, tc.wantExit, stderr.String())
 			}
 		})
 	}

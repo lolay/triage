@@ -789,11 +789,11 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 - s2 — [exec] `command` escape hatch (explicit interpreter + `platform` guard, **no implicit shell**); subprocess I/O: stream-to-discard default, bounded assertion scan, `--command-log` tee, `--verbose` stderr replay (§5)
 - s3 — [exec] Validate complex real-world checks in config (Xcode path/version, keychain certs, `xcrun`, virtualenv paths) against golden fixtures
 
-### m4 — Delegation & plugins
+### m4 — Delegation & concurrency
 
 - s1 — [deep] `delegate` check type + recursive nesting (checks list order, pass/fail per child)
 - s2 — [exec] Delegate tree renderer: nested board under pending summary line, stream child lines as they complete (extends §7.2 pending renderer)
-- s3 — [exec] `triage-<name>` PATH-plugin discovery + contract; golden fixtures for `examples/` workspace/delegate shapes
+- s3 — [exec] **Deferred.** `triage-<name>` PATH-plugin discovery + contract was dropped from m4 per the owner; the delegate/workspace golden fixtures it would have carried ship with s2 instead. Revisit post-m4 if a real plugin need appears.
 - s4 — [deep] Bounded worker pool + `--jobs`/`-j` (default ≈ NumCPU, `1` = sequential): run local checks **and** sibling delegates concurrently; `serial:` opt-out on check/group; render and `--command-log` materialize in **list order** (per-probe spool → ordered concat) so golden output is timing-independent (§5, §7.2). Highest payoff here because delegate-heavy workspaces dominate runtime
 
 ### m5 — Release & distribution

@@ -55,6 +55,7 @@ type Check struct {
 	Hint     string
 	Dir      string
 	Label    string // required on command; identity key for command/one_of
+	Serial   bool   // opt out of concurrency: run as a barrier under a global serial lock (§7.2)
 
 	// tool fields.
 	Version     string // npm-style range as written
@@ -123,6 +124,7 @@ type checkFields struct {
 	Hint     string     `yaml:"hint"`
 	Dir      string     `yaml:"dir"`
 	Label    string     `yaml:"label"`
+	Serial   bool       `yaml:"serial"`
 
 	Version     string `yaml:"version"`
 	VersionFrom string `yaml:"version_from"`
@@ -200,6 +202,7 @@ func (c *Check) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	c.Hint = f.Hint
 	c.Dir = f.Dir
 	c.Label = f.Label
+	c.Serial = f.Serial
 	c.Version = f.Version
 	c.VersionFrom = f.VersionFrom
 	c.Unset = f.Unset

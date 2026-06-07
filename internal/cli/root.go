@@ -8,11 +8,14 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -92,6 +95,7 @@ func bindFlags(cmd *cobra.Command, f *Flags) {
 	fl.BoolVar(&f.NoColor, "no-color", false, "Disable ANSI color output")
 	fl.BoolVar(&f.Verbose, "verbose", false, "Replay probe subprocess output for failures on stderr")
 	fl.BoolVar(&f.NoUpdateCheck, "no-update-check", false, "Disable the update-availability banner")
+	fl.IntVarP(&f.Jobs, "jobs", "j", 0, "Max concurrent checks (bounded worker pool; default ≈ NumCPU, capped at 8). 1 = fully sequential")
 
 	// --command-log has an optional value: present with no path uses the
 	// default; present with a path uses that path; absent = disabled.
@@ -102,7 +106,16 @@ func bindFlags(cmd *cobra.Command, f *Flags) {
 }
 
 // run is the core logic invoked by cobra's RunE.
-func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, exitCode *int) error {
+func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, exitCode *int) error {
+	// Validate --jobs: an explicit value below 1 is a usage error. The default
+	// 0 means "auto" and is resolved by the engine, so only reject when the
+	// flag was actually set.
+	if cmd.Flags().Changed("jobs") && f.Jobs < 1 {
+		*exitCode = ExitUsageError
+		fmt.Fprintf(stderr, "triage: --jobs must be >= 1 (got %d)\n", f.Jobs)
+		return nil
+	}
+
 	// Resolve the optional [config] positional argument.
 	configArg := ""
 	if len(args) > 0 {
@@ -161,9 +174,16 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 		ConfigVars: cfg.Vars,
 		CLIVars:    cliVars,
 		CommandLog: cmdLog,
+		Jobs:       f.Jobs,
 	}
 	runner := engine.NewRunnerWith(rOpts)
-	results := runner.Run(profile)
+
+	// Cancel the run on SIGINT/SIGTERM: in-flight subprocesses (CommandContext)
+	// die, the scheduler stops launching new work, and we print the partial
+	// board below before exiting 130.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	results := runner.RunContext(ctx, profile)
 
 	// Render output.
 	opts := report.BoardOpts{
@@ -205,6 +225,14 @@ func run(_ *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, ex
 				fmt.Fprintf(stderr, "\n--- %s ---\n%s\n", r.Label, r.Output)
 			}
 		}
+	}
+
+	// An interrupted run prints the partial board (above) and exits 130,
+	// overriding the normal exit-code ladder.
+	if ctx.Err() != nil {
+		fmt.Fprintln(stderr, "\ntriage: interrupted")
+		*exitCode = ExitInterrupted
+		return nil
 	}
 
 	// A fatal config error during the run (e.g. a delegate cycle) overrides the

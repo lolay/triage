@@ -5,9 +5,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 
 	"github.com/lolay/triage/internal/config"
 )
+
+// maxAutoJobs caps the auto-selected worker count. Checks are I/O-bound
+// subprocess waits, so NumCPU is already conservative; the cap keeps the
+// default polite on big machines (spec §7.2).
+const maxAutoJobs = 8
 
 // Runner executes the checks in a profile in declaration order.
 //
@@ -16,6 +23,11 @@ import (
 // entirely (no board line, no count). m4 adds delegate: a delegate loads a
 // child config and recurses, inheriting the parent's CLI vars but using the
 // child's own config vars, with absolute-path cycle detection.
+//
+// m4 s4 adds a bounded worker pool: siblings run concurrently while results are
+// always materialized in list order (execute concurrently, materialize in list
+// order — §7.2). The whole delegate tree shares one Runner.shared (semaphore,
+// global serial lock, first fatal error), so the subprocess budget is global.
 type Runner struct {
 	opts RunnerOpts
 	vars map[string]string // effective template vars (config + CLI + built-ins)
@@ -23,9 +35,47 @@ type Runner struct {
 	// ancestor chain; a revisit is a delegate cycle. Children receive a copy
 	// (path-based, so sibling/diamond delegates to the same config are allowed).
 	visited map[string]bool
-	// fatal records the first fatal config error (e.g. a delegate cycle). The
-	// CLI maps a non-nil value to ExitUsageError (3) after Run returns.
-	fatal error
+	// shared is the run-global coordination state, shared by pointer across the
+	// entire delegate tree. Initialized on the root in RunContext.
+	shared *sharedState
+}
+
+// sharedState is the run-global coordination shared across the whole delegate
+// tree: the subprocess semaphore, the global serial lock, and the first fatal
+// config error. A single instance is created on the root Runner and threaded
+// (by pointer) into every delegate child runner.
+type sharedState struct {
+	// sem bounds concurrent subprocess spawns; nil means sequential (jobs == 1),
+	// in which case the dedicated in-list-order path is used as the oracle.
+	sem chan struct{}
+	// serialMu serializes serial: checks so they never overlap across subtrees.
+	serialMu sync.Mutex
+	// fatalMu guards fatal, which may be written from sibling goroutines.
+	fatalMu sync.Mutex
+	fatal   error
+}
+
+func (s *sharedState) recordFatal(err error) {
+	s.fatalMu.Lock()
+	defer s.fatalMu.Unlock()
+	if s.fatal == nil {
+		s.fatal = err
+	}
+}
+
+// acquire/release bracket a single subprocess spawn against the semaphore.
+// They are no-ops in the sequential path (sem == nil), so instant checks and
+// aggregators never consume a token.
+func (r *Runner) acquire() {
+	if r.shared != nil && r.shared.sem != nil {
+		r.shared.sem <- struct{}{}
+	}
+}
+
+func (r *Runner) release() {
+	if r.shared != nil && r.shared.sem != nil {
+		<-r.shared.sem
+	}
 }
 
 // NewRunner creates a Runner with default (real) LookPath and probe functions.
@@ -34,10 +84,32 @@ func NewRunner() *Runner { return &Runner{} }
 // NewRunnerWith creates a Runner with injected functions (for tests).
 func NewRunnerWith(opts RunnerOpts) *Runner { return &Runner{opts: opts} }
 
-// Run executes each check in profile and returns an ordered, depth-annotated
-// Result slice. Group headers appear immediately before their children and carry
-// the worst-status glyph of the group.
+// defaultJobs resolves Jobs==0 to min(NumCPU, maxAutoJobs), never below 1.
+func defaultJobs() int {
+	n := runtime.NumCPU()
+	if n > maxAutoJobs {
+		n = maxAutoJobs
+	}
+	if n < 1 {
+		n = 1
+	}
+	return n
+}
+
+// Run executes each check in profile against a background context. It is the
+// stable entry point kept for the many call sites that don't thread a context;
+// RunContext is the cancellation-aware variant.
 func (r *Runner) Run(profile config.Profile) []Result {
+	return r.RunContext(context.Background(), profile)
+}
+
+// RunContext executes each check in profile and returns an ordered,
+// depth-annotated Result slice. Group headers appear immediately before their
+// children and carry the worst-status glyph of the group. Execution may be
+// concurrent (bounded by Jobs), but results — and any --command-log blocks —
+// are materialized in config list order. Cancelling ctx (SIGINT/SIGTERM) stops
+// scheduling new work and returns the partial board.
+func (r *Runner) RunContext(ctx context.Context, profile config.Profile) []Result {
 	r.vars = r.effectiveVars()
 	if r.visited == nil {
 		r.visited = map[string]bool{}
@@ -46,17 +118,48 @@ func (r *Runner) Run(profile config.Profile) []Result {
 	if r.opts.ConfigPath != "" {
 		r.visited[absOrSelf(r.opts.ConfigPath)] = true
 	}
-	return r.runChecks(context.Background(), profile, 0)
+	if r.shared == nil {
+		jobs := r.opts.Jobs
+		if jobs <= 0 {
+			jobs = defaultJobs()
+		}
+		r.shared = &sharedState{}
+		if jobs > 1 {
+			r.shared.sem = make(chan struct{}, jobs)
+		}
+	}
+
+	results := r.runChecks(ctx, profile, 0)
+
+	// Materialize --command-log blocks in list order so the log file is
+	// byte-identical regardless of --jobs. The root's results slice contains
+	// every leaf in the whole tree (delegate children included), in order.
+	if r.opts.CommandLog != nil {
+		for i := range results {
+			if e := results[i].cmdLog; e != nil {
+				r.opts.CommandLog.WriteBlock(e.label, e.cwd, e.run, e.output)
+			}
+		}
+	}
+	return results
 }
 
 // Fatal returns the first fatal config error encountered during Run (e.g. a
 // delegate cycle), or nil. The CLI maps a non-nil value to ExitUsageError (3).
-func (r *Runner) Fatal() error { return r.fatal }
+// Safe to call after Run/RunContext returns (all workers have joined).
+func (r *Runner) Fatal() error {
+	if r.shared == nil {
+		return nil
+	}
+	r.shared.fatalMu.Lock()
+	defer r.shared.fatalMu.Unlock()
+	return r.shared.fatal
+}
 
 // recordFatal stores the first fatal config error seen during a run.
 func (r *Runner) recordFatal(err error) {
-	if r.fatal == nil {
-		r.fatal = err
+	if r.shared != nil {
+		r.shared.recordFatal(err)
 	}
 }
 
@@ -86,9 +189,56 @@ func absOrSelf(p string) string {
 	return p
 }
 
+// runChecks executes a sibling list and returns their results concatenated in
+// list order. When the pool is disabled (Jobs == 1, sem == nil) it uses the
+// dedicated sequential path — the reference oracle for --jobs-invariant output.
+// Otherwise siblings run as goroutines writing into per-index slots; serial:
+// checks act as a barrier (drain in-flight siblings, then run alone under the
+// global serial lock).
 func (r *Runner) runChecks(ctx context.Context, checks config.Profile, depth int) []Result {
+	if r.shared == nil || r.shared.sem == nil {
+		return r.runChecksSequential(ctx, checks, depth)
+	}
+
+	slots := make([][]Result, len(checks))
+	var wg sync.WaitGroup
+	for i, c := range checks {
+		if ctx.Err() != nil {
+			break
+		}
+		if c.Serial {
+			// Barrier: let prior in-flight siblings finish, then run this check
+			// alone while holding the process-global serial lock so serial
+			// checks never overlap across subtrees.
+			wg.Wait()
+			r.shared.serialMu.Lock()
+			slots[i] = r.runCheck(ctx, c, depth)
+			r.shared.serialMu.Unlock()
+			continue
+		}
+		wg.Add(1)
+		go func(i int, c config.Check) {
+			defer wg.Done()
+			slots[i] = r.runCheck(ctx, c, depth)
+		}(i, c)
+	}
+	wg.Wait()
+
+	var out []Result
+	for _, s := range slots {
+		out = append(out, s...)
+	}
+	return out
+}
+
+// runChecksSequential runs a sibling list in a single goroutine, in list order.
+// Used for Jobs == 1 (the oracle) and for the children of a serial: group.
+func (r *Runner) runChecksSequential(ctx context.Context, checks config.Profile, depth int) []Result {
 	var out []Result
 	for _, c := range checks {
+		if ctx.Err() != nil {
+			break
+		}
 		out = append(out, r.runCheck(ctx, c, depth)...)
 	}
 	return out
@@ -148,7 +298,12 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 
 	switch c.Type {
 	case config.TypeTool:
-		res := checkTool(ctx, c.Value, c.Constraint, c.Hint, r.opts)
+		// Only the version probe spawns a subprocess, so the semaphore is
+		// acquired inside the wrapped RunProbe — a bare presence check never
+		// holds a token. The wrapper is a no-op in the sequential path.
+		o := r.opts
+		o.RunProbe = r.wrapProbe(o.RunProbe)
+		res := checkTool(ctx, c.Value, c.Constraint, c.Hint, o)
 		res.Severity = sev
 		res.Depth = depth
 		res.Group = c.Group
@@ -281,12 +436,35 @@ func (r *Runner) checkOneOf(ctx context.Context, c config.Check, depth int) Resu
 	}
 }
 
+// wrapProbe brackets a tool version probe with the subprocess semaphore. It
+// returns base unchanged in the sequential path so tool checks behave exactly
+// as before when the pool is off.
+func (r *Runner) wrapProbe(base func(context.Context, string, []string) (string, error)) func(context.Context, string, []string) (string, error) {
+	if r.shared == nil || r.shared.sem == nil {
+		return base
+	}
+	return func(ctx context.Context, name string, args []string) (string, error) {
+		r.acquire()
+		defer r.release()
+		if base == nil {
+			return defaultRunProbe(ctx, name, args)
+		}
+		return base(ctx, name, args)
+	}
+}
+
 // runGroup executes a structural `group` container: run all children, then
 // prepend a header Result carrying the group's worst glyph.
 // If all children are omitted (platform-filtered), the group header is also
-// omitted.
+// omitted. A serial: group runs its children sequentially (spec §7.2); it is
+// already invoked under the global serial lock by the scheduler.
 func (r *Runner) runGroup(ctx context.Context, c config.Check, depth int) []Result {
-	children := r.runChecks(ctx, c.Items, depth+1)
+	var children []Result
+	if c.Serial {
+		children = r.runChecksSequential(ctx, c.Items, depth+1)
+	} else {
+		children = r.runChecks(ctx, c.Items, depth+1)
+	}
 
 	// Omit the header when all children were platform-filtered away.
 	if len(children) == 0 {
@@ -390,14 +568,12 @@ func (r *Runner) runDelegate(ctx context.Context, c config.Check, depth int) []R
 	childOpts.ConfigVars = childCfg.Vars
 	childOpts.ConfigPath = absPath
 
-	child := &Runner{opts: childOpts, visited: childVisited}
+	// The child shares the parent's run-global state (semaphore, serial lock,
+	// fatal error), so the subprocess budget is global across the whole tree
+	// and a cycle detected deep in a subtree surfaces at the root.
+	child := &Runner{opts: childOpts, visited: childVisited, shared: r.shared}
 	child.vars = child.effectiveVars()
 	children := child.runChecks(ctx, childProfile, depth+1)
-
-	// Bubble the first fatal error from the subtree up to the root runner.
-	if child.fatal != nil {
-		r.recordFatal(child.fatal)
-	}
 
 	sev, pass := worstStatus(children)
 	summary := Result{
