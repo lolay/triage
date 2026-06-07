@@ -76,6 +76,13 @@ homebrew_casks:
       name: triage-release-bot
       email: triage-release-bot@lolay.com
     commit_msg_template: "triage {{ .Version }}"
+    skip_upload: "auto"
     manpages:
       - man/triage.1
       - man/triage.5
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/triage"]
+          end
