@@ -3,7 +3,7 @@
 > **Audience:** the agent that will turn the concurrency design into a concrete
 > implementation plan (steps, ordering, tests) for `triage`.
 > **Status:** design decided & folded into `specs/product.md` (§4, §5, §7.2, §7.3,
-> §9 m2 s3 + m4 s4, §12). This handoff is the planning brief — **don't
+> [milestones.md](milestones.md) m2 s3 + m4 s4, §12). This handoff is the planning brief — **don't
 > re-litigate the decision**; plan the build.
 
 ## 1. One-paragraph context
@@ -89,7 +89,7 @@ interleave line-by-line → garbled log.
 - **§7.2** — new **"Concurrency (bounded worker pool)"** subsection; in-flight
   progress reworded to "rendered in list order."
 - **§7.3** — `--jobs <n>` / `-j` flag row added.
-- **§9** — m2 s3 notes finalize-in-order renderer; **new m4 s4** = the worker
+- **[milestones.md](milestones.md)** — m2 s3 notes finalize-in-order renderer; **new m4 s4** = the worker
   pool deliverable.
 - **§12** — locked "Concurrency" decision bullet.
 
@@ -152,4 +152,4 @@ interleave line-by-line → garbled log.
 
 Use the repo's model-tier tags on each step:
 `[deep]` = architecture/ambiguous · `[exec]` = repo-aware implementation ·
-`[fast]` = mechanical/fully-spec'd. (Matches §9.)
+`[fast]` = mechanical/fully-spec'd. (Matches [milestones.md](milestones.md).)
