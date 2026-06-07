@@ -18,7 +18,7 @@ SHELL := bash
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init build lint format test ci pre-commit doctor clean snapshot
+.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot
 
 # Module + binary coordinates.
 MODULE  := github.com/lolay/triage
@@ -66,8 +66,11 @@ lint: ## Static checks: gofmt drift + go vet + golangci-lint (if installed)
 format: ## Auto-fix formatting (gofmt -w .)
 	gofmt -w .
 
-test: ## Run all tests (race detector on; catches pool data races)
-	go test -race ./...
+test: ## Run all tests (race detector on; prints per-package coverage)
+	go test -race -cover ./...
+
+vuln: ## Scan dependencies for known vulnerabilities (govulncheck)
+	go tool govulncheck ./...
 
 ci: build lint test ## Full pre-push gate: build, lint, test (what CI runs)
 

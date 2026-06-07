@@ -25,7 +25,11 @@ import (
 func defaultRunCommand(ctx context.Context, interp, script, dir string, env map[string]string) (string, int, error) {
 	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(tctx, interp, "-c", script)
+	// gosec G204: executing the operator-authored command snippet is the whole
+	// point of a command: check. interp and script come from the user's own
+	// triage.yaml (trusted like a local Makefile), not from network or otherwise
+	// untrusted input, so there is no injection boundary to defend here.
+	cmd := exec.CommandContext(tctx, interp, "-c", script) //nolint:gosec // G204: runs operator-authored command checks by design
 	if dir != "" {
 		cmd.Dir = dir
 	}

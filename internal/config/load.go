@@ -93,7 +93,10 @@ func (l *loader) loadFile(absPath string, visited map[string]bool) error {
 	}
 	visited[absPath] = true
 
-	data, err := os.ReadFile(absPath)
+	// gosec G304: reading the operator's own config file (and the include: chain
+	// it references) is triage's primary job. absPath derives from the
+	// operator-supplied config path, not from attacker-controlled input.
+	data, err := os.ReadFile(absPath) //nolint:gosec // G304: reads the operator-supplied config file by design
 	if err != nil {
 		return fmt.Errorf("reading config %s: %w", absPath, err)
 	}
@@ -358,7 +361,10 @@ func readVersionFrom(dir, rel string) (string, error) {
 	if !filepath.IsAbs(p) {
 		p = filepath.Join(dir, rel)
 	}
-	data, err := os.ReadFile(p)
+	// gosec G304: reading the version_from pin file named by the operator's
+	// config, resolved relative to that config's directory. Operator-controlled
+	// input, not attacker-controlled.
+	data, err := os.ReadFile(p) //nolint:gosec // G304: reads the operator-named version_from pin file by design
 	if err != nil {
 		return "", err
 	}

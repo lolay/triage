@@ -121,7 +121,11 @@ func defaultLookPath(name string) (string, error) {
 func defaultRunProbe(ctx context.Context, name string, args []string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	// gosec G204: triage probes operator-declared tools for their version. name
+	// is the tool from the user's own config and args are in-code constants or
+	// probeOverrides, not untrusted input — probing the requested tool is the
+	// feature, not a vulnerability.
+	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput() //nolint:gosec // G204: probes operator-declared tools by design
 	if len(out) > captureCap {
 		out = out[:captureCap]
 	}

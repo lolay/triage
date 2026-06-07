@@ -14,9 +14,20 @@ linters:
     - errorlint
     - revive
     - bodyclose
+    - gosec
   settings:
     govet:
       enable-all: true
+  exclusions:
+    rules:
+      # gosec targets production attack surface. Test files write fixtures to
+      # t.TempDir() with 0644/0755 and read golden files by computed paths
+      # (G301/G302/G304/G306) — test scaffolding, not a security boundary — so
+      # gosec is scoped out of *_test.go. Production G204/G304 sites are
+      # suppressed inline with per-line justifications instead.
+      - path: _test\.go
+        linters:
+          - gosec
 
 formatters:
   enable:

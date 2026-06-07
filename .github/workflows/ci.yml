@@ -24,6 +24,10 @@ jobs:
           cache: true
           cache-dependency-path: go.mod
 
+      # Verify dependencies on disk match go.sum before building anything.
+      - name: go mod verify
+        run: go mod verify
+
       # `make lint` runs golangci-lint when present; install the pinned binary
       # so CI enforces the full linter (the local gate skips it gracefully).
       - name: Install golangci-lint
@@ -33,6 +37,11 @@ jobs:
 
       - name: make ci
         run: make ci
+
+      # Scan dependencies for known vulnerabilities (govulncheck wired as a
+      # go.mod tool dependency; runs on every push and PR).
+      - name: make vuln
+        run: make vuln
 
   release-check:
     name: goreleaser check

@@ -21,11 +21,15 @@ type CommandLog struct {
 // OpenCommandLog opens (or creates, with parents) path, truncating any existing
 // content, and returns a CommandLog ready to receive probe blocks.
 func OpenCommandLog(path string) (*CommandLog, error) {
+	// The log records each probe's run line (including any with_env values) and
+	// raw command output, which can contain secrets, so it is owner-only:
+	// directory 0o750 and file 0o600 (gosec G301/G302). path is the operator's
+	// own --command-log destination, so opening it (G304) is by design.
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, fmt.Errorf("command-log: mkdir %s: %w", dir, err)
 	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gosec // G304: writes the operator-supplied --command-log path by design
 	if err != nil {
 		return nil, fmt.Errorf("command-log: open %s: %w", path, err)
 	}
