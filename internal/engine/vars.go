@@ -33,7 +33,7 @@ func expand(s string, vars map[string]string) (string, error) {
 		name := m[1]
 		val, ok := vars[name]
 		if !ok {
-			err = fmt.Errorf("unknown variable {{ %s }} - define it under vars: or pass --var %s=...", name, name)
+			err = fmt.Errorf("unknown variable {{ %s }} - define it under vars: or pass --var %s=value", name, name)
 			return token
 		}
 		return val

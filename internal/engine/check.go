@@ -4,42 +4,48 @@ package engine
 type Severity int
 
 const (
-	SeverityError Severity = iota // fatal: prerequisite is missing
-	SeverityWarn                  // non-fatal: project still usable
-	SeverityInfo                  // informational only
+	// SeverityError marks a fatal prerequisite failure.
+	SeverityError Severity = iota
+	// SeverityWarn marks a non-fatal issue; the project may still be usable.
+	SeverityWarn
+	// SeverityInfo is informational only.
+	SeverityInfo
 )
 
 // ResultKind distinguishes group header lines from leaf check lines.
 type ResultKind int
 
 const (
-	KindLeaf     ResultKind = iota // a single check result
-	KindHeader                     // a group header (worst glyph of its children)
-	KindDelegate                   // a delegate summary (worst glyph of a child config's subtree)
+	// KindLeaf is a single check result line.
+	KindLeaf ResultKind = iota
+	// KindHeader is a group header carrying the worst-status glyph of its children.
+	KindHeader
+	// KindDelegate is a delegate summary carrying the worst glyph of a child subtree.
+	KindDelegate
 )
 
 // Result records the outcome of a single check execution or a group header.
+//
+// Fields are ordered for struct alignment, not by topic. Notable ones:
+//   - Message: pass = found detail; fail = what went wrong + optional hint.
+//   - Group: legacy flat-section label (bare `group:` string field on a leaf).
+//   - Output: bounded excerpt of the subprocess combined output (capped at
+//     captureCap bytes), set on failure for --verbose replay and --json detail
+//     enrichment. Empty for instant checks (env, path, tool presence).
+//   - Depth: nesting depth (0 = top level). Kind: leaf/header/delegate.
+//   - cmdLog: data needed to materialize a --command-log block. Stashed during
+//     (possibly concurrent) execution and written by RunContext in list order,
+//     so the log bytes are identical regardless of --jobs. nil when no log is active.
 type Result struct {
+	cmdLog   *cmdLogEntry
 	Label    string
+	Message  string
+	Group    string
+	Output   string
 	Severity Severity
+	Depth    int
+	Kind     ResultKind
 	Pass     bool
-	Message  string // pass: found detail; fail: what went wrong + optional hint
-
-	// Board layout fields.
-	Depth int        // nesting depth (0 = top level)
-	Group string     // legacy flat-section label (bare `group:` string field on leaf)
-	Kind  ResultKind // KindLeaf or KindHeader
-
-	// Output holds a bounded excerpt of the subprocess combined output (capped
-	// at captureCap bytes). Set on failure for --verbose replay and --json
-	// detail enrichment. Empty for instant checks (env, path, tool presence).
-	Output string
-
-	// cmdLog carries the data needed to materialize a --command-log block. It
-	// is stashed on command-check results during execution (which may be
-	// concurrent) and written out by RunContext in list order, so the log file
-	// bytes are identical regardless of --jobs. nil when no log is active.
-	cmdLog *cmdLogEntry
 }
 
 // cmdLogEntry is one deferred --command-log block, written in list order.

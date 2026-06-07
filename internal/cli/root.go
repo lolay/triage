@@ -44,7 +44,7 @@ func ExecuteWith(args []string, stdout, stderr io.Writer) int {
 		if exitCode == ExitOK {
 			exitCode = ExitUsageError
 		}
-		fmt.Fprintln(stderr, "triage:", err)
+		_, _ = fmt.Fprintln(stderr, "triage:", err)
 	}
 	return exitCode
 }
@@ -112,7 +112,7 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 	// flag was actually set.
 	if cmd.Flags().Changed("jobs") && f.Jobs < 1 {
 		*exitCode = ExitUsageError
-		fmt.Fprintf(stderr, "triage: --jobs must be >= 1 (got %d)\n", f.Jobs)
+		_, _ = fmt.Fprintf(stderr, "triage: --jobs must be >= 1 (got %d)\n", f.Jobs)
 		return nil
 	}
 
@@ -125,16 +125,16 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 	cfg, err := config.Discover(configArg)
 	if err != nil {
 		*exitCode = ExitUsageError
-		fmt.Fprintf(stderr, "triage: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "triage: %v\n", err)
 		if errors.Is(err, config.ErrNotFound) {
-			fmt.Fprintln(stderr, "\nRun 'triage --help' for usage.")
+			_, _ = fmt.Fprintln(stderr, "\nRun 'triage --help' for usage.")
 		}
 		return nil
 	}
 
 	// Surface non-fatal load-time diagnostics on stderr, before the board.
 	for _, w := range cfg.Warnings {
-		fmt.Fprintln(stderr, "triage: warning:", w)
+		_, _ = fmt.Fprintln(stderr, "triage: warning:", w)
 	}
 
 	// Select the active profile.
@@ -149,7 +149,7 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 	cliVars, err := parseCLIVars(f.Vars)
 	if err != nil {
 		*exitCode = ExitUsageError
-		fmt.Fprintf(stderr, "triage: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "triage: %v\n", err)
 		return nil
 	}
 
@@ -159,9 +159,9 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 		var logErr error
 		cmdLog, logErr = engine.OpenCommandLog(f.CommandLog)
 		if logErr != nil {
-			fmt.Fprintf(stderr, "triage: warning: --command-log: %v\n", logErr)
+			_, _ = fmt.Fprintf(stderr, "triage: warning: --command-log: %v\n", logErr)
 		} else {
-			defer cmdLog.Close()
+			defer func() { _ = cmdLog.Close() }()
 		}
 	}
 
@@ -199,7 +199,7 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 
 	if f.JSON {
 		if err := report.JSON(stdout, results, f.Profile, logPath); err != nil {
-			fmt.Fprintf(stderr, "triage: json output: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "triage: json output: %v\n", err)
 			*exitCode = ExitUsageError
 			return nil
 		}
@@ -222,7 +222,7 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 	if f.Verbose {
 		for _, r := range results {
 			if !r.Pass && r.Output != "" {
-				fmt.Fprintf(stderr, "\n--- %s ---\n%s\n", r.Label, r.Output)
+				_, _ = fmt.Fprintf(stderr, "\n--- %s ---\n%s\n", r.Label, r.Output)
 			}
 		}
 	}
@@ -230,7 +230,7 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 	// An interrupted run prints the partial board (above) and exits 130,
 	// overriding the normal exit-code ladder.
 	if ctx.Err() != nil {
-		fmt.Fprintln(stderr, "\ntriage: interrupted")
+		_, _ = fmt.Fprintln(stderr, "\ntriage: interrupted")
 		*exitCode = ExitInterrupted
 		return nil
 	}
@@ -238,7 +238,7 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 	// A fatal config error during the run (e.g. a delegate cycle) overrides the
 	// normal exit-code ladder with a usage/config error.
 	if ferr := runner.Fatal(); ferr != nil {
-		fmt.Fprintf(stderr, "triage: %v\n", ferr)
+		_, _ = fmt.Fprintf(stderr, "triage: %v\n", ferr)
 		*exitCode = ExitUsageError
 		return nil
 	}

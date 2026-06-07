@@ -17,14 +17,14 @@ import (
 var update = flag.Bool("update", false, "regenerate golden files")
 
 type e2eCase struct {
+	setEnv   map[string]string
 	name     string
-	args     []string // extra args appended after the fixture dir path
-	binDir   string   // subdir under testdata/<name> to prepend to PATH; default "bin"
+	binDir   string
+	goos     string
+	args     []string
+	unsetEnv []string
 	wantExit int
-	noGolden bool              // skip golden stdout comparison; just assert the exit code
-	setEnv   map[string]string // env vars to set via t.Setenv before the run
-	unsetEnv []string          // env var names to ensure are absent for the run
-	goos     string            // sets TRIAGE_TEST_GOOS to pin platform for platform: guards
+	noGolden bool
 }
 
 var e2eCases = []e2eCase{
@@ -151,7 +151,6 @@ var e2eCases = []e2eCase{
 // Pass -update to regenerate all golden files.
 func TestGolden(t *testing.T) {
 	for _, tc := range e2eCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			fixtureDir := filepath.Join("testdata", tc.name)
 			args := append([]string{fixtureDir}, tc.args...)
@@ -178,11 +177,13 @@ func TestGolden(t *testing.T) {
 			}
 			for _, k := range tc.unsetEnv {
 				prev, existed := os.LookupEnv(k)
-				os.Unsetenv(k)
+				if err := os.Unsetenv(k); err != nil {
+					t.Fatalf("Unsetenv(%q): %v", k, err)
+				}
 				if existed {
-					t.Cleanup(func() { os.Setenv(k, prev) })
+					t.Cleanup(func() { _ = os.Setenv(k, prev) })
 				} else {
-					t.Cleanup(func() { os.Unsetenv(k) })
+					t.Cleanup(func() { _ = os.Unsetenv(k) })
 				}
 			}
 			if tc.goos != "" {
@@ -269,12 +270,9 @@ func TestJobsFlagValidation(t *testing.T) {
 func lineDiff(got, want string) string {
 	gotLines := strings.Split(got, "\n")
 	wantLines := strings.Split(want, "\n")
-	n := len(gotLines)
-	if len(wantLines) > n {
-		n = len(wantLines)
-	}
+	n := max(len(wantLines), len(gotLines))
 	var sb strings.Builder
-	for i := 0; i < n; i++ {
+	for i := range n {
 		g, w := "", ""
 		if i < len(gotLines) {
 			g = gotLines[i]

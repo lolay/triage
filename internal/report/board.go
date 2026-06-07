@@ -24,10 +24,10 @@ func Board(w io.Writer, results []engine.Result, opts BoardOpts) {
 		profile = "default"
 	}
 
-	fmt.Fprintf(w, "triage (profile: %s)\n", profile)
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintf(w, "triage (profile: %s)\n", profile)
+	_, _ = fmt.Fprintln(w)
 	renderResults(w, results, opts)
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w)
 	printSummary(w, results, opts)
 	printRemediation(w, results, opts)
 }
@@ -44,7 +44,7 @@ func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
 		if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
 			indent := strings.Repeat("    ", r.Depth)
 			glyph := glyphFor(r, opts)
-			fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Label)
+			_, _ = fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Label)
 			lastLegacyGroup = ""
 			continue
 		}
@@ -53,7 +53,7 @@ func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
 		if r.Group != "" && r.Group != lastLegacyGroup {
 			glyph := worstGlyphForGroup(r.Group, results, opts)
 			indent := strings.Repeat("    ", r.Depth)
-			fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Group)
+			_, _ = fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Group)
 			lastLegacyGroup = r.Group
 		}
 
@@ -71,12 +71,12 @@ func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
 		if !r.Pass && r.Message != "" {
 			line += " — " + r.Message
 		}
-		fmt.Fprintln(w, line)
+		_, _ = fmt.Fprintln(w, line)
 	}
 }
 
 // printRemediation writes the "To fix, run:" block of deduped hints.
-func printRemediation(w io.Writer, results []engine.Result, opts BoardOpts) {
+func printRemediation(w io.Writer, results []engine.Result, _ BoardOpts) {
 	var hints []string
 	seen := map[string]bool{}
 	for _, r := range results {
@@ -96,9 +96,9 @@ func printRemediation(w io.Writer, results []engine.Result, opts BoardOpts) {
 	if len(hints) == 0 {
 		return
 	}
-	fmt.Fprintln(w, "To fix, run:")
+	_, _ = fmt.Fprintln(w, "To fix, run:")
 	for _, h := range hints {
-		fmt.Fprintf(w, "    %s\n", h)
+		_, _ = fmt.Fprintf(w, "    %s\n", h)
 	}
 }
 

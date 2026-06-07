@@ -21,25 +21,25 @@ func TestPool_SemaphoreCapsConcurrency(t *testing.T) {
 	const jobs = 3
 	const nChecks = 20
 
-	var inFlight int32
-	var maxSeen int32
+	var inFlight atomic.Int32
+	var maxSeen atomic.Int32
 	probe := func(_ context.Context, _ string, _ []string) (string, error) {
-		cur := atomic.AddInt32(&inFlight, 1)
+		cur := inFlight.Add(1)
 		for {
-			old := atomic.LoadInt32(&maxSeen)
-			if cur <= old || atomic.CompareAndSwapInt32(&maxSeen, old, cur) {
+			old := maxSeen.Load()
+			if cur <= old || maxSeen.CompareAndSwap(old, cur) {
 				break
 			}
 		}
 		time.Sleep(2 * time.Millisecond)
-		atomic.AddInt32(&inFlight, -1)
+		inFlight.Add(-1)
 		return "tool version 1.0.0", nil
 	}
 
 	found := make([]string, nChecks)
 	checks := make(config.Profile, nChecks)
 	probeOut := map[string]string{}
-	for i := 0; i < nChecks; i++ {
+	for i := range nChecks {
 		name := "tool" + strconv.Itoa(i)
 		found[i] = name
 		probeOut[name] = "tool version 1.0.0"
@@ -61,10 +61,10 @@ func TestPool_SemaphoreCapsConcurrency(t *testing.T) {
 			t.Errorf("check %q should pass: %s", res.Label, res.Message)
 		}
 	}
-	if got := atomic.LoadInt32(&maxSeen); got > jobs {
+	if got := maxSeen.Load(); got > jobs {
 		t.Errorf("max concurrent probes = %d, want <= %d", got, jobs)
 	}
-	if got := atomic.LoadInt32(&maxSeen); got < 2 {
+	if got := maxSeen.Load(); got < 2 {
 		t.Errorf("expected real concurrency (max in-flight %d); pool may not be running", got)
 	}
 }
@@ -101,14 +101,14 @@ func TestPool_BarePresenceDoesNotHoldToken(t *testing.T) {
 // other check is in flight: while the serial check executes, in-flight count is
 // exactly 1.
 func TestSerial_NeverOverlaps(t *testing.T) {
-	var inFlight int32
-	var serialSawOthers int32
+	var inFlight atomic.Int32
+	var serialSawOthers atomic.Int32
 
 	runCmd := func(_ context.Context, _, script, _ string, _ map[string]string) (string, int, error) {
-		cur := atomic.AddInt32(&inFlight, 1)
-		defer atomic.AddInt32(&inFlight, -1)
+		cur := inFlight.Add(1)
+		defer inFlight.Add(-1)
 		if script == "serial-cmd" && cur != 1 {
-			atomic.StoreInt32(&serialSawOthers, 1)
+			serialSawOthers.Store(1)
 		}
 		time.Sleep(3 * time.Millisecond)
 		return "", 0, nil
@@ -128,7 +128,7 @@ func TestSerial_NeverOverlaps(t *testing.T) {
 	if len(results) != 5 {
 		t.Fatalf("want 5 results, got %d", len(results))
 	}
-	if atomic.LoadInt32(&serialSawOthers) != 0 {
+	if serialSawOthers.Load() != 0 {
 		t.Errorf("serial check overlapped with another check")
 	}
 }
@@ -154,13 +154,13 @@ func TestSerial_GlobalAcrossDelegates(t *testing.T) {
     serial: true
 `)
 
-	var inFlight int32
-	var overlap int32
+	var inFlight atomic.Int32
+	var overlap atomic.Int32
 	runCmd := func(_ context.Context, _, script, _ string, _ map[string]string) (string, int, error) {
-		if cur := atomic.AddInt32(&inFlight, 1); script == "serial-cmd" && cur != 1 {
-			atomic.StoreInt32(&overlap, 1)
+		if cur := inFlight.Add(1); script == "serial-cmd" && cur != 1 {
+			overlap.Store(1)
 		}
-		defer atomic.AddInt32(&inFlight, -1)
+		defer inFlight.Add(-1)
 		time.Sleep(3 * time.Millisecond)
 		return "", 0, nil
 	}
@@ -175,7 +175,7 @@ func TestSerial_GlobalAcrossDelegates(t *testing.T) {
 	})
 	r.Run(loadProfile(t, cfgPath, "default"))
 
-	if atomic.LoadInt32(&overlap) != 0 {
+	if overlap.Load() != 0 {
 		t.Errorf("serial checks in sibling delegates overlapped")
 	}
 }
@@ -210,7 +210,9 @@ func TestCommandLog_ByteEqualAcrossJobs(t *testing.T) {
 			Jobs:       jobs,
 		})
 		r.Run(checks)
-		cl.Close()
+		if closeErr := cl.Close(); closeErr != nil {
+			t.Fatalf("Close: %v", closeErr)
+		}
 		b, err := os.ReadFile(logPath)
 		if err != nil {
 			t.Fatalf("read log: %v", err)

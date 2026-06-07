@@ -20,11 +20,11 @@ const captureCap = 256 << 10
 // probeOverride holds a custom probe command and an optional version extractor
 // for tools that don't follow the conventional `<tool> --version` output.
 type probeOverride struct {
+	// extract pulls the semver token from the output line; nil means the
+	// default firstSemverToken extractor is used.
+	extract func(line string) string
 	// args replaces the default []string{"--version"}.
 	args []string
-	// extract pulls the semver token from the output line; nil means the default
-	// firstSemverToken extractor is used.
-	extract func(line string) string
 }
 
 // probeOverrides maps a tool name to its probe overrides.
@@ -187,7 +187,7 @@ func checkTool(ctx context.Context, name, constraint, hint string, opts RunnerOp
 
 	raw, _ := runProbe(ctx, name, probeArgs)
 	versionStr := ""
-	for _, line := range strings.Split(raw, "\n") {
+	for line := range strings.SplitSeq(raw, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

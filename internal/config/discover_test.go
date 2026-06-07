@@ -13,7 +13,6 @@ const minimalConfig = "default: []\n"
 // Each accepted config name resolves on its own when it is the only file present.
 func TestDiscover_EachNameResolves(t *testing.T) {
 	for _, name := range configNames {
-		name := name
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
 			writeFile(t, dir, name, minimalConfig)

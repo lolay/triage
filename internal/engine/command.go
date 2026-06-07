@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,7 +37,8 @@ func defaultRunCommand(ctx context.Context, interp, script, dir string, env map[
 		out = out[:captureCap]
 	}
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
 			// Normal non-zero exit — not an exec error.
 			return string(out), exitErr.ExitCode(), nil
 		}
@@ -88,8 +90,8 @@ func envPrefix(env map[string]string) string {
 func shellQuote(s string) string {
 	safe := true
 	for _, r := range s {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.' || r == '/') {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') &&
+			(r < '0' || r > '9') && r != '_' && r != '-' && r != '.' && r != '/' {
 			safe = false
 			break
 		}

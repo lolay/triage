@@ -28,9 +28,8 @@ type Sink interface {
 //
 // Rewrite uses ANSI cursor-up + clear-to-EOL (works on all ANSI-capable TTYs).
 type TTYSink struct {
-	w       io.Writer
-	opts    BoardOpts
-	pending int // number of pending lines currently on screen (0 or 1)
+	w    io.Writer
+	opts BoardOpts
 }
 
 // NewTTYSink creates a TTYSink writing to w.
@@ -38,15 +37,17 @@ func NewTTYSink(w io.Writer, opts BoardOpts) *TTYSink {
 	return &TTYSink{w: w, opts: opts}
 }
 
+// Begin prints the profile header line.
 func (s *TTYSink) Begin(profile string) {
 	p := profile
 	if p == "" {
 		p = "default"
 	}
-	fmt.Fprintf(s.w, "triage (profile: %s)\n", p)
-	fmt.Fprintln(s.w)
+	_, _ = fmt.Fprintf(s.w, "triage (profile: %s)\n", p)
+	_, _ = fmt.Fprintln(s.w)
 }
 
+// Emit prints one result line as it arrives (streaming).
 func (s *TTYSink) Emit(r engine.Result) {
 	// For group headers, we print a pending line that will be rewritten by the
 	// next header/leaf in the group (which calls back with the resolved result).
@@ -62,7 +63,7 @@ func (s *TTYSink) Emit(r engine.Result) {
 	if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate {
 		indent := strings.Repeat("    ", r.Depth)
 		glyph := glyphFor(r, s.opts)
-		fmt.Fprintf(s.w, "%s%s %s\n", indent, glyph, r.Label)
+		_, _ = fmt.Fprintf(s.w, "%s%s %s\n", indent, glyph, r.Label)
 		return
 	}
 
@@ -79,11 +80,12 @@ func (s *TTYSink) Emit(r engine.Result) {
 	if !r.Pass && r.Message != "" {
 		line += " — " + r.Message
 	}
-	fmt.Fprintln(s.w, line)
+	_, _ = fmt.Fprintln(s.w, line)
 }
 
+// End prints the trailing summary and remediation block.
 func (s *TTYSink) End(results []engine.Result) {
-	fmt.Fprintln(s.w)
+	_, _ = fmt.Fprintln(s.w)
 	printSummary(s.w, results, s.opts)
 	printRemediation(s.w, results, s.opts)
 }
@@ -111,13 +113,13 @@ func printSummary(w io.Writer, results []engine.Result, opts BoardOpts) {
 	case errs > 0:
 		errWord := plural(errs, "error")
 		warnWord := plural(warns, "warning")
-		fmt.Fprintf(w, "%s %s, %s, %d ok — fix the [✗] items above\n",
+		_, _ = fmt.Fprintf(w, "%s %s, %s, %d ok — fix the [✗] items above\n",
 			color("✗", colorRed, opts), errWord, warnWord, ok)
 	case warns > 0:
 		warnWord := plural(warns, "warning")
-		fmt.Fprintf(w, "%s %s, %d ok — see [!] items above\n",
+		_, _ = fmt.Fprintf(w, "%s %s, %d ok — see [!] items above\n",
 			color("!", colorYellow, opts), warnWord, ok)
 	default:
-		fmt.Fprintf(w, "%s %d ok\n", color("✓", colorGreen, opts), ok)
+		_, _ = fmt.Fprintf(w, "%s %d ok\n", color("✓", colorGreen, opts), ok)
 	}
 }

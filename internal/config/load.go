@@ -80,7 +80,7 @@ type loader struct {
 	warnings  []string
 }
 
-func (l *loader) warnf(format string, args ...interface{}) {
+func (l *loader) warnf(format string, args ...any) {
 	l.warnings = append(l.warnings, fmt.Sprintf(format, args...))
 }
 
@@ -117,8 +117,8 @@ func (l *loader) loadFile(absPath string, visited map[string]bool) error {
 	var includes []string
 	var fileVars map[string]string
 	type profileNode struct {
-		name string
-		node ast.Node
+		node ast.Node // raw YAML node for the profile body
+		name string   // profile key
 	}
 	var profiles []profileNode
 
@@ -367,7 +367,7 @@ func readVersionFrom(dir, rel string) (string, error) {
 
 func constraintFromPin(content string) string {
 	var line string
-	for _, raw := range strings.Split(content, "\n") {
+	for raw := range strings.SplitSeq(content, "\n") {
 		s := strings.TrimSpace(raw)
 		if s == "" || strings.HasPrefix(s, "#") {
 			continue

@@ -43,46 +43,45 @@ const (
 // group/delegate display name; empty for one_of). The remaining fields are the
 // optional common fields plus the type-specific fields; only those relevant to
 // Type are populated.
+//
+// Fields are ordered for struct alignment, not by topic:
+//   - common: Type (discriminator), Value (primary value), Severity, Required
+//     (sugar resolved to Severity by the engine), Group (legacy flat-section
+//     label), Platform (os guard), Hint, Dir, Label (required on command;
+//     identity key for command/one_of), Serial (run as a barrier under the
+//     global serial lock, §7.2).
+//   - tool: Version (range as written), VersionFrom (pin-file path), Constraint
+//     (resolved npm-style constraint from Version or VersionFrom).
+//   - group/one_of: Items (nested children), OneOf (alternatives; bare tool
+//     names are normalized to {tool: <name>}).
+//   - env: Unset, Matches. command: Contains, Exit, Interp, WithEnv (per-command
+//     env injection layered over inherited env). delegate: Config (child config
+//     path; defaults to the discovered config under Dir).
+//   - source: the file that declared the check (for collision diagnostics).
 type Check struct {
-	Type  string // one of the Type* constants
-	Value string // primary value for the type key
-
-	// Common optional fields (valid on any check).
-	Severity string   // "error" | "warn" | "info"; "" means default (error)
-	Required *bool    // required: sugar; resolved to Severity by the engine (m2 s3)
-	Group    string   // legacy `group:` string field (flat section label)
-	Platform []string // os guard(s): macos | linux | windows
-	Hint     string
-	Dir      string
-	Label    string // required on command; identity key for command/one_of
-	Serial   bool   // opt out of concurrency: run as a barrier under a global serial lock (§7.2)
-
-	// tool fields.
-	Version     string // npm-style range as written
-	VersionFrom string // pin-file path as written
-	Constraint  string // resolved npm-style constraint (from Version or VersionFrom)
-
-	// group: nested children.
-	Items []Check
-
-	// one_of: alternatives (bare tool names are normalized to {tool: <name>}).
-	OneOf []Check
-
-	// env fields.
-	Unset   bool
-	Matches string
-
-	// command fields.
-	Contains string
-	Exit     *int
-	Interp   string
-	WithEnv  map[string]string // per-command env injection (layered over inherited env)
-
-	// delegate fields.
-	Config string // child config path (defaults to the discovered config under Dir)
-
-	// source is the file that declared the check (for collision diagnostics).
-	source string
+	Required    *bool
+	WithEnv     map[string]string
+	Exit        *int
+	Label       string
+	Version     string
+	Type        string
+	Hint        string
+	Dir         string
+	Severity    string
+	source      string
+	Group       string
+	VersionFrom string
+	Constraint  string
+	Config      string
+	Value       string
+	Interp      string
+	Matches     string
+	Contains    string
+	Platform    []string
+	OneOf       []Check
+	Items       []Check
+	Unset       bool
+	Serial      bool
 }
 
 // identity returns the collision key for a check within a profile: the type key
@@ -107,43 +106,40 @@ func (c Check) identity() string {
 }
 
 // checkFields mirrors the YAML surface of a check before type-key resolution.
-// Pointer/zero-aware fields let UnmarshalYAML detect which keys were present.
+// Pointer/zero-aware fields (Tool/Env/Path/Command/Delegate/Group/Required/Exit)
+// let UnmarshalYAML detect which keys were present; the rest are plain scalars.
+// Fields are ordered for struct alignment, not by topic.
 type checkFields struct {
-	Tool     *string     `yaml:"tool"`
-	Env      *string     `yaml:"env"`
-	Path     *string     `yaml:"path"`
-	OneOf    []oneOfElem `yaml:"one_of"`
-	Command  *string     `yaml:"command"`
-	Delegate *string     `yaml:"delegate"`
-	Group    *string     `yaml:"group"`
-	Items    []Check     `yaml:"items"`
-
-	Severity string     `yaml:"severity"`
-	Required *bool      `yaml:"required"`
-	Platform stringList `yaml:"platform"`
-	Hint     string     `yaml:"hint"`
-	Dir      string     `yaml:"dir"`
-	Label    string     `yaml:"label"`
-	Serial   bool       `yaml:"serial"`
-
-	Version     string `yaml:"version"`
-	VersionFrom string `yaml:"version_from"`
-
-	Unset   bool   `yaml:"unset"`
-	Matches string `yaml:"matches"`
-
-	Contains string            `yaml:"contains"`
-	Exit     *int              `yaml:"exit"`
-	Interp   string            `yaml:"interp"`
-	WithEnv  map[string]string `yaml:"with_env"`
-
-	Config string `yaml:"config"`
+	Required    *bool             `yaml:"required"`
+	Env         *string           `yaml:"env"`
+	Path        *string           `yaml:"path"`
+	WithEnv     map[string]string `yaml:"with_env"`
+	Command     *string           `yaml:"command"`
+	Delegate    *string           `yaml:"delegate"`
+	Group       *string           `yaml:"group"`
+	Exit        *int              `yaml:"exit"`
+	Tool        *string           `yaml:"tool"`
+	Dir         string            `yaml:"dir"`
+	VersionFrom string            `yaml:"version_from"`
+	Hint        string            `yaml:"hint"`
+	Severity    string            `yaml:"severity"`
+	Label       string            `yaml:"label"`
+	Config      string            `yaml:"config"`
+	Version     string            `yaml:"version"`
+	Interp      string            `yaml:"interp"`
+	Contains    string            `yaml:"contains"`
+	Matches     string            `yaml:"matches"`
+	Items       []Check           `yaml:"items"`
+	Platform    stringList        `yaml:"platform"`
+	OneOf       []oneOfElem       `yaml:"one_of"`
+	Unset       bool              `yaml:"unset"`
+	Serial      bool              `yaml:"serial"`
 }
 
 // UnmarshalYAML resolves the single reserved type key for a check, erroring on
 // zero or multiple primary type keys. `group` is the type only when no other
 // primary type key is present; otherwise it is the legacy string field.
-func (c *Check) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Check) UnmarshalYAML(unmarshal func(any) error) error {
 	var f checkFields
 	if err := unmarshal(&f); err != nil {
 		return err
@@ -226,7 +222,7 @@ type oneOfElem struct {
 }
 
 // UnmarshalYAML accepts either a bare tool name or a full sub-check.
-func (e *oneOfElem) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (e *oneOfElem) UnmarshalYAML(unmarshal func(any) error) error {
 	var name string
 	if err := unmarshal(&name); err == nil {
 		e.check = Check{Type: TypeTool, Value: name}
@@ -244,7 +240,7 @@ func (e *oneOfElem) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type stringList []string
 
 // UnmarshalYAML accepts either "x" or [x, y].
-func (s *stringList) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (s *stringList) UnmarshalYAML(unmarshal func(any) error) error {
 	var single string
 	if err := unmarshal(&single); err == nil {
 		*s = []string{single}

@@ -3,9 +3,11 @@ package engine
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sync"
 
 	"github.com/lolay/triage/internal/config"
@@ -29,8 +31,8 @@ const maxAutoJobs = 8
 // order — §7.2). The whole delegate tree shares one Runner.shared (semaphore,
 // global serial lock, first fatal error), so the subprocess budget is global.
 type Runner struct {
-	opts RunnerOpts
-	vars map[string]string // effective template vars (config + CLI + built-ins)
+	// vars is the effective template var map (config + CLI + built-ins).
+	vars map[string]string
 	// visited is the set of resolved absolute config paths on the current
 	// ancestor chain; a revisit is a delegate cycle. Children receive a copy
 	// (path-based, so sibling/diamond delegates to the same config are allowed).
@@ -38,6 +40,7 @@ type Runner struct {
 	// shared is the run-global coordination state, shared by pointer across the
 	// entire delegate tree. Initialized on the root in RunContext.
 	shared *sharedState
+	opts   RunnerOpts
 }
 
 // sharedState is the run-global coordination shared across the whole delegate
@@ -45,14 +48,15 @@ type Runner struct {
 // config error. A single instance is created on the root Runner and threaded
 // (by pointer) into every delegate child runner.
 type sharedState struct {
+	// fatal is the first fatal config error seen; guarded by fatalMu because it
+	// may be written from sibling goroutines.
+	fatal error
 	// sem bounds concurrent subprocess spawns; nil means sequential (jobs == 1),
 	// in which case the dedicated in-list-order path is used as the oracle.
 	sem chan struct{}
 	// serialMu serializes serial: checks so they never overlap across subtrees.
 	serialMu sync.Mutex
-	// fatalMu guards fatal, which may be written from sibling goroutines.
-	fatalMu sync.Mutex
-	fatal   error
+	fatalMu  sync.Mutex
 }
 
 func (s *sharedState) recordFatal(err error) {
@@ -86,14 +90,7 @@ func NewRunnerWith(opts RunnerOpts) *Runner { return &Runner{opts: opts} }
 
 // defaultJobs resolves Jobs==0 to min(NumCPU, maxAutoJobs), never below 1.
 func defaultJobs() int {
-	n := runtime.NumCPU()
-	if n > maxAutoJobs {
-		n = maxAutoJobs
-	}
-	if n < 1 {
-		n = 1
-	}
-	return n
+	return max(min(runtime.NumCPU(), maxAutoJobs), 1)
 }
 
 // Run executes each check in profile against a background context. It is the
@@ -169,12 +166,8 @@ func (r *Runner) recordFatal(err error) {
 // inherits the parent's CLIVars, so config vars never leak across the boundary.
 func (r *Runner) effectiveVars() map[string]string {
 	out := make(map[string]string, len(r.opts.ConfigVars)+len(r.opts.CLIVars)+2)
-	for k, v := range r.opts.ConfigVars {
-		out[k] = v
-	}
-	for k, v := range r.opts.CLIVars {
-		out[k] = v
-	}
+	maps.Copy(out, r.opts.ConfigVars)
+	maps.Copy(out, r.opts.CLIVars)
 	out["profile"] = r.opts.Profile
 	out["os"] = r.goos()
 	return out
@@ -259,12 +252,7 @@ func platformMatches(c config.Check, goos string) bool {
 	if len(c.Platform) == 0 {
 		return true
 	}
-	for _, p := range c.Platform {
-		if p == goos {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.Platform, goos)
 }
 
 func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Result {

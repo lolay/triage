@@ -44,7 +44,7 @@ func opts(found []string, probeOutputs map[string]string) RunnerOpts {
 // ── tool check ───────────────────────────────────────────────────────────────
 
 func TestCheckTool_Present_NoConstraint(t *testing.T) {
-	r := checkTool(context.Background(), "git", "", "https://git-scm.com",
+	r := checkTool(t.Context(), "git", "", "https://git-scm.com",
 		opts([]string{"git"}, nil))
 	if !r.Pass {
 		t.Errorf("want pass, got fail: %s", r.Message)
@@ -55,7 +55,7 @@ func TestCheckTool_Present_NoConstraint(t *testing.T) {
 }
 
 func TestCheckTool_Missing(t *testing.T) {
-	r := checkTool(context.Background(), "notfound", "", "install it",
+	r := checkTool(t.Context(), "notfound", "", "install it",
 		opts(nil, nil))
 	if r.Pass {
 		t.Errorf("want fail, got pass")
@@ -69,7 +69,7 @@ func TestCheckTool_Missing(t *testing.T) {
 }
 
 func TestCheckTool_Missing_NoHint(t *testing.T) {
-	r := checkTool(context.Background(), "notfound", "", "",
+	r := checkTool(t.Context(), "notfound", "", "",
 		opts(nil, nil))
 	if r.Pass {
 		t.Errorf("want fail")
@@ -80,7 +80,7 @@ func TestCheckTool_Missing_NoHint(t *testing.T) {
 }
 
 func TestCheckTool_VersionPass(t *testing.T) {
-	r := checkTool(context.Background(), "mytool", ">=1.2.0", "upgrade mytool",
+	r := checkTool(t.Context(), "mytool", ">=1.2.0", "upgrade mytool",
 		opts([]string{"mytool"}, map[string]string{"mytool": "mytool version 1.3.0"}))
 	if !r.Pass {
 		t.Errorf("want pass, got: %s", r.Message)
@@ -91,7 +91,7 @@ func TestCheckTool_VersionPass(t *testing.T) {
 }
 
 func TestCheckTool_VersionFail(t *testing.T) {
-	r := checkTool(context.Background(), "mytool", ">=2.0.0", "upgrade mytool",
+	r := checkTool(t.Context(), "mytool", ">=2.0.0", "upgrade mytool",
 		opts([]string{"mytool"}, map[string]string{"mytool": "mytool version 1.9.0"}))
 	if r.Pass {
 		t.Errorf("want fail (version too old)")
@@ -105,7 +105,7 @@ func TestCheckTool_VersionFail(t *testing.T) {
 }
 
 func TestCheckTool_GoVersionOverride(t *testing.T) {
-	r := checkTool(context.Background(), "go", ">=1.21.0", "",
+	r := checkTool(t.Context(), "go", ">=1.21.0", "",
 		opts([]string{"go"}, map[string]string{"go": "go version go1.26.3 linux/amd64"}))
 	if !r.Pass {
 		t.Errorf("go version override: want pass, got: %s", r.Message)
@@ -116,7 +116,7 @@ func TestCheckTool_GoVersionOverride(t *testing.T) {
 }
 
 func TestCheckTool_GoVersionFail(t *testing.T) {
-	r := checkTool(context.Background(), "go", ">=1.30.0", "install newer go",
+	r := checkTool(t.Context(), "go", ">=1.30.0", "install newer go",
 		opts([]string{"go"}, map[string]string{"go": "go version go1.26.3 linux/amd64"}))
 	if r.Pass {
 		t.Errorf("want fail: 1.26.3 < 1.30.0")
@@ -124,7 +124,7 @@ func TestCheckTool_GoVersionFail(t *testing.T) {
 }
 
 func TestCheckTool_UnparseableVersion(t *testing.T) {
-	r := checkTool(context.Background(), "mytool", ">=1.0.0", "",
+	r := checkTool(t.Context(), "mytool", ">=1.0.0", "",
 		opts([]string{"mytool"}, map[string]string{"mytool": "no version info here"}))
 	if r.Pass {
 		t.Errorf("want fail when version cannot be parsed")
@@ -132,7 +132,7 @@ func TestCheckTool_UnparseableVersion(t *testing.T) {
 }
 
 func TestCheckTool_NodeLeadingV(t *testing.T) {
-	r := checkTool(context.Background(), "node", ">=18.0.0", "",
+	r := checkTool(t.Context(), "node", ">=18.0.0", "",
 		opts([]string{"node"}, map[string]string{"node": "v20.11.0"}))
 	if !r.Pass {
 		t.Errorf("node v20.11.0 should satisfy >=18.0.0: %s", r.Message)

@@ -13,9 +13,9 @@ import (
 // each probe writes one labeled block (label, cwd, run line, ---, raw output).
 // A nil *CommandLog is safe: all methods are no-ops.
 type CommandLog struct {
-	path string
-	mu   sync.Mutex
 	w    io.WriteCloser
+	path string
+	mu   sync.Mutex // serializes WriteBlock across concurrent checks
 }
 
 // OpenCommandLog opens (or creates, with parents) path, truncating any existing
@@ -40,14 +40,14 @@ func (cl *CommandLog) WriteBlock(label, cwd, run string, output []byte) {
 	}
 	cl.mu.Lock()
 	defer cl.mu.Unlock()
-	fmt.Fprintf(cl.w, "=== %s ===\ncwd: %s\nrun: %s\n---\n", label, cwd, run)
+	_, _ = fmt.Fprintf(cl.w, "=== %s ===\ncwd: %s\nrun: %s\n---\n", label, cwd, run)
 	if len(output) > 0 {
-		cl.w.Write(output)
+		_, _ = cl.w.Write(output)
 		if output[len(output)-1] != '\n' {
-			fmt.Fprintln(cl.w)
+			_, _ = fmt.Fprintln(cl.w)
 		}
 	}
-	fmt.Fprintln(cl.w)
+	_, _ = fmt.Fprintln(cl.w)
 }
 
 // Path returns the log file path (empty when cl is nil).

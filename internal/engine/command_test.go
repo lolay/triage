@@ -18,7 +18,7 @@ type fakeCmd struct {
 // fakeRunCommand returns a RunCommand injection that maps "interp:script" → response.
 // Unrecognised keys return exit 0, empty output.
 func fakeRunCommand(table map[string]fakeCmd) func(context.Context, string, string, string, map[string]string) (string, int, error) {
-	return func(_ context.Context, interp, script, dir string, env map[string]string) (string, int, error) {
+	return func(_ context.Context, interp, script, _ string, _ map[string]string) (string, int, error) {
 		key := interp + ":" + script
 		if v, ok := table[key]; ok {
 			return v.stdout, v.exitCode, nil
@@ -318,7 +318,7 @@ func TestCommand_WithEnv_MultipleKeys(t *testing.T) {
 func TestCommand_WithEnv_CommandLogPrefix(t *testing.T) {
 	logPath := t.TempDir() + "/commands.log"
 	cl, _ := OpenCommandLog(logPath)
-	defer cl.Close()
+	defer func() { _ = cl.Close() }()
 
 	r := NewRunnerWith(RunnerOpts{
 		CommandLog: cl,
@@ -330,7 +330,9 @@ func TestCommand_WithEnv_CommandLogPrefix(t *testing.T) {
 		Label:   "greet",
 		WithEnv: map[string]string{"FOO": "bar"},
 	}})
-	cl.Close()
+	if err := cl.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
 
 	content, err := os.ReadFile(logPath)
 	if err != nil {
@@ -344,7 +346,7 @@ func TestCommand_WithEnv_CommandLogPrefix(t *testing.T) {
 func TestDefaultRunCommand_WithEnvOverridesInherited(t *testing.T) {
 	t.Setenv("TRIAGE_OVERRIDE_TEST", "inherited")
 	stdout, exitCode, err := defaultRunCommand(
-		context.Background(),
+		t.Context(),
 		"sh",
 		`echo "$TRIAGE_OVERRIDE_TEST"`,
 		"",
@@ -429,8 +431,8 @@ func TestOneLineExcerpt_Truncate(t *testing.T) {
 func TestCommandLog_NilSafe(t *testing.T) {
 	var cl *CommandLog
 	cl.WriteBlock("lbl", "/dir", "sh -c true", nil)
-	if err := cl.Close(); err != nil {
-		t.Errorf("nil Close should not error: %v", err)
+	if closeErr := cl.Close(); closeErr != nil {
+		t.Errorf("nil Close should not error: %v", closeErr)
 	}
 	if cl.Path() != "" {
 		t.Error("nil Path should return empty string")
@@ -444,8 +446,8 @@ func TestCommandLog_WriteAndClose(t *testing.T) {
 		t.Fatalf("OpenCommandLog: %v", err)
 	}
 	cl.WriteBlock("my label", "/some/dir", "sh -c echo hi", []byte("hi\n"))
-	if err := cl.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
+	if closeErr := cl.Close(); closeErr != nil {
+		t.Fatalf("Close: %v", closeErr)
 	}
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -464,12 +466,16 @@ func TestCommandLog_Truncated(t *testing.T) {
 
 	cl1, _ := OpenCommandLog(path)
 	cl1.WriteBlock("run1", "", "cmd", []byte("first run output"))
-	cl1.Close()
+	if err := cl1.Close(); err != nil {
+		t.Fatalf("Close cl1: %v", err)
+	}
 
 	// Second open should truncate, not append.
 	cl2, _ := OpenCommandLog(path)
 	cl2.WriteBlock("run2", "", "cmd", []byte("second run output"))
-	cl2.Close()
+	if err := cl2.Close(); err != nil {
+		t.Fatalf("Close cl2: %v", err)
+	}
 
 	content, _ := os.ReadFile(path)
 	if strings.Contains(string(content), "first run output") {
@@ -486,7 +492,9 @@ func TestCommandLog_MkdirParents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenCommandLog should create parent dirs: %v", err)
 	}
-	cl.Close()
+	if err := cl.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("log file should exist: %v", err)
 	}
@@ -497,7 +505,7 @@ func TestCommandLog_MkdirParents(t *testing.T) {
 func TestCommand_WritesCommandLog(t *testing.T) {
 	logPath := t.TempDir() + "/commands.log"
 	cl, _ := OpenCommandLog(logPath)
-	defer cl.Close()
+	defer func() { _ = cl.Close() }()
 
 	r := NewRunnerWith(RunnerOpts{
 		CommandLog: cl,
@@ -510,7 +518,9 @@ func TestCommand_WritesCommandLog(t *testing.T) {
 		Value: "echo hello",
 		Label: "greet",
 	}})
-	cl.Close()
+	if err := cl.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
 
 	content, err := os.ReadFile(logPath)
 	if err != nil {

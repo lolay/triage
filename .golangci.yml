@@ -10,6 +10,13 @@ linters:
   default: standard
   enable:
     - misspell
+    - modernize
+    - errorlint
+    - revive
+    - bodyclose
+  settings:
+    govet:
+      enable-all: true
 
 formatters:
   enable:

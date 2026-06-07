@@ -17,6 +17,12 @@ type JSONReport struct {
 // JSONResult represents one check outcome in the machine-readable report.
 // Shape per spec §7.3: group, name, severity, status, detail, command_log_path,
 // plus depth/kind so consumers can reconstruct the delegate tree deterministically.
+//
+// Field order is the JSON output contract: encoding/json emits keys in
+// declaration order, so this layout must stay stable (locked by
+// TestJSON_KeyOrder). It is therefore exempt from govet's fieldalignment.
+//
+//nolint:govet // output key order is part of the JSON contract (spec §7.3)
 type JSONResult struct {
 	Group          string `json:"group,omitempty"`
 	Name           string `json:"name"`
