@@ -69,7 +69,8 @@ not search parent directories.
 
 ## Configuration
 
-Add `triage.yaml` (or `.triage.yaml`) in the directory where you run `triage`
+Add `triage.yaml` (or `triage.yml` / `.triage.yaml` / `.triage.yml`) in the
+directory where you run `triage`
 (typically your repo root — `cd` there first, or pass the path). Root is always a mapping:
 **`include`** (reserved top-level key) or profile keys. **`default`** is the only
 special profile (used when `--profile` is omitted); any other name is valid

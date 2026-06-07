@@ -79,7 +79,7 @@ type Check struct {
 	WithEnv  map[string]string // per-command env injection (layered over inherited env)
 
 	// delegate fields.
-	Config string // child config path (defaults to triage.yaml under Dir)
+	Config string // child config path (defaults to the discovered config under Dir)
 
 	// source is the file that declared the check (for collision diagnostics).
 	source string

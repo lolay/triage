@@ -1,8 +1,9 @@
 // Package config resolves and loads the triage configuration.
 //
-// Discovery (m1) resolves the [config] positional: a cwd lookup of triage.yaml
-// then .triage.yaml, a directory argument, or an explicit file; not-found is a
-// usage error, exit 3 (spec §4).
+// Discovery (m1) resolves the [config] positional: a cwd lookup of triage.yaml,
+// triage.yml, .triage.yaml, then .triage.yml (in that precedence order), a
+// directory argument, or an explicit file; not-found is a usage error, exit 3
+// (spec §4).
 //
 // Loading (m2 s1) parses the full triage.yaml schema with github.com/goccy/go-yaml
 // and produces a composite, inheritance-resolved Config:

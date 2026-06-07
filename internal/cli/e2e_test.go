@@ -34,6 +34,12 @@ var e2eCases = []e2eCase{
 		wantExit: 0,
 	},
 	{
+		// yml-config: discovery accepts the triage.yml spelling, not just
+		// triage.yaml. default: [] → clean board, exit 0.
+		name:     "yml-config",
+		wantExit: 0,
+	},
+	{
 		// not-found: directory exists but contains no triage.yaml → exit 3.
 		name:     "not-found",
 		wantExit: 3,

@@ -228,8 +228,10 @@ default:
 ```
 
 Run `triage --var region=eu …` to override `region` without editing the file.
-- **Config file names:** `triage.yaml` (canonical) or `.triage.yaml` (hidden);
-both accepted. One **entry** file per run — no per-mode files, no `triage/`
+- **Config file names:** `triage.yaml` (canonical), `triage.yml`, `.triage.yaml`
+(hidden), or `.triage.yml` — all accepted, in that precedence order. `.yaml` is
+the recommended spelling; the `.yml` variants are accepted for convenience (e.g.
+for users coming from GitHub Actions). One **entry** file per run — no per-mode files, no `triage/`
 config directory, no multi-root discovery. Large or shared setups compose via
 **`include:`** (merge YAML files) and **`extends:`** (inherit profiles within
 the merged config); that is the only multi-file story. **No walk-up:** the entry
@@ -247,10 +249,10 @@ subcommand — that was Cobra boilerplate, not user value. Other CLIs put `docto
 action *is* the check run.
 
 ```text
-triage                          # triage.yaml or .triage.yaml in cwd
+triage                          # triage.{yaml,yml} or .triage.{yaml,yml} in cwd
 triage --profile release        # stricter preflight
 triage path/to/triage.yaml      # explicit config file
-triage path/to/repo/            # directory → triage.yaml then .triage.yaml inside
+triage path/to/repo/            # directory → triage.{yaml,yml}/.triage.{yaml,yml} inside
 triage --version                # print version and exit
 triage --help                   # flags + usage
 ```
@@ -261,15 +263,16 @@ same command (§7.3).
 
 **Config path (optional positional):** zero or one argument.
 
-- **Omitted:** look for `triage.yaml`, then `.triage.yaml`, in the **current
-  working directory only** — no parent-directory walk-up.
-- **Directory argument:** load `triage.yaml`, then `.triage.yaml`, inside that
+- **Omitted:** look for `triage.yaml`, `triage.yml`, `.triage.yaml`, then
+  `.triage.yml` (in that precedence order) in the **current working directory
+  only** — no parent-directory walk-up.
+- **Directory argument:** look for the same names, in the same order, inside that
   directory.
-- **File argument:** load that path directly.
+- **File argument:** load that path directly (any name/extension).
 
-**Config not found:** print a short message (e.g. `no triage.yaml or .triage.yaml
-in <cwd>`), then print the **same usage text as `--help`**, and exit `3`. Do not
-run checks.
+**Config not found:** print a short message (e.g. `no triage.yaml, triage.yml,
+.triage.yaml, .triage.yml in <cwd>`), then print the **same usage text as
+`--help`**, and exit `3`. Do not run checks.
 
 More than one positional argument → usage error (exit `3`).
 
@@ -980,7 +983,7 @@ dedicated Homebrew tap + release binaries (m5); sibling `lolay/triage-action` fo
 CI + Marketplace (m6);
 `go install` deferred (m7); scoop/winget later (§3, §11).
 - **Native Windows:** designed-for now (no implicit shell), shipped in m7 (§3).
-- **Config:** YAML; canonical `triage.yaml`, `.triage.yaml` accepted; type-as-key
+- **Config:** YAML; canonical `triage.yaml`, with `triage.yml`, `.triage.yaml`, `.triage.yml` accepted; type-as-key
 checks; JSON Schema ships (§4).
 - **Composition:** `include` (files, in order) + `extends` (profiles) — distinct
 mechanisms (§4); no `triage/` config dir or other multi-config layout.
