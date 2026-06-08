@@ -10,13 +10,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 _2026-06-07 · commit `afddce6`_
 
 ### Added
-- GoReleaser v2 config: darwin/linux × amd64/arm64 builds, GitHub release
-  assets, Homebrew cask tap commit (`homebrew_casks`, `Casks/` directory).
+- GoReleaser v2 config: darwin/linux/windows × amd64/arm64 builds, GitHub release
+  assets (windows archives as `.zip`), and man pages bundled in all archives.
+- Binary-download Homebrew formula (`Formula/triage.rb`) generated at release time
+  via `scripts/publish-formula.sh` and committed to `lolay/homebrew-tap`.
 - GitHub Actions release workflow (`.github/workflows/release.yml`):
-  tag-triggered `goreleaser release` job + `promote-floating-tags` job
-  (`vX.Y`, `vX`) sequenced strictly after the GitHub release.
+  tag-triggered `goreleaser release` job, formula publish step, and
+  `promote-floating-tags` job (`vX.Y`, `vX`) sequenced strictly after the tap commit.
 - `make tag VERSION=x.y.z` and guarded `make release` (`CONFIRM_RELEASE=1`)
-  targets; `make man` runs `mandoc -Tlint` over both man pages.
+  and `make publish-formula` (`CONFIRM_PUBLISH_FORMULA=1`) targets; `make man`
+  runs `mandoc -Tlint` over both man pages.
+- `make snapshot` runs `goreleaser release --snapshot` (full archives +
+  checksums locally, no publish).
 - Man pages `man/triage.1` (CLI reference) and `man/triage.5` (config file
   format), hand-authored mdoc; mandoc lint clean.
 - Update-availability banner: `internal/updatecheck` fetches GitHub
@@ -30,12 +35,13 @@ _2026-06-07 · commit `afddce6`_
   bootstrap, and post-release verification.
 
 ### Changed
-- Homebrew install command: `brew install --cask lolay/tap/triage` (cask,
-  not formula; semantically correct for a pre-built binary).
+- Homebrew install command: `brew install lolay/tap/triage` (cross-platform
+  binary-download formula; `brew upgrade` picks up new releases on macOS, Linux,
+  and WSL2).
 - `specs/product.md §4–§5` trimmed to one-paragraph summaries that link to
   `specs/config.md`; full check-type and config-model detail lives there now.
 - `triage.yaml` header comment updated to point to `specs/config.md`.
-- `README.md`: install section updated for Homebrew cask, Releasing section
+- `README.md`: install section updated for Homebrew formula, Releasing section
   added linking to `specs/releasing.md`.
 
 ---

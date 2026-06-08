@@ -6,7 +6,7 @@
 # marketplace/channel updated while another is not:
 #   Phase 1 — goreleaser: build + validate all artifacts (no remote until green)
 #   Phase 2 — GitHub Release assets (inside goreleaser)
-#   Phase 3a — Homebrew tap commit (inside goreleaser, after release URLs exist)
+#   Phase 3a — Homebrew tap commit (scripts/publish-formula.sh, after release URLs exist)
 #   Phase 3b — floating tags vX.Y / vX (this workflow, last)
 #
 # See specs/releasing.md for the full maintainer guide.
@@ -49,7 +49,16 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Homebrew formula
+        if: ${{ !contains(github.ref, '-') }}
+        env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          scripts/publish-formula.sh "$VERSION" dist
 
   promote-floating-tags:
     name: promote floating tags

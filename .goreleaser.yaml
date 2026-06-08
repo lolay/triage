@@ -1,10 +1,10 @@
 # goreleaser configuration (v2 schema) — m5 release pipeline.
 #
-# Build matrix (darwin/linux × amd64/arm64), GitHub release assets, Homebrew tap
-# commit, and man pages. Publishing order inside `goreleaser release`:
+# Build matrix (darwin/linux/windows × amd64/arm64), GitHub release assets,
+# and man pages. Publishing order inside `goreleaser release`:
 #   1. Build + archive + checksum (local, no remote)
 #   2. GitHub Release upload (lolay/triage)
-#   3. Homebrew tap commit (lolay/homebrew-tap) — after release URLs exist
+# Phase 3a (Homebrew tap): scripts/publish-formula.sh in release.yml after goreleaser.
 # Floating tags (v0.3, v0) are promoted in .github/workflows/release.yml last.
 version: 2
 
@@ -31,6 +31,7 @@ builds:
     goos:
       - darwin
       - linux
+      - windows
     goarch:
       - amd64
       - arm64
@@ -39,6 +40,10 @@ archives:
   - id: triage
     formats:
       - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - src: man/triage.1
@@ -62,27 +67,3 @@ release:
   extra_files:
     - glob: man/triage.1
     - glob: man/triage.5
-
-homebrew_casks:
-  - name: triage
-    repository:
-      owner: lolay
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    directory: Casks
-    homepage: "https://github.com/lolay/triage"
-    description: "The environment doctor — declarative prerequisite checks"
-    commit_author:
-      name: triage-release-bot
-      email: triage-release-bot@lolay.com
-    commit_msg_template: "triage {{ .Version }}"
-    skip_upload: "auto"
-    manpages:
-      - man/triage.1
-      - man/triage.5
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/triage"]
-          end

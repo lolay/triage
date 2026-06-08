@@ -18,7 +18,7 @@ SHELL := bash
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot man tag release
+.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot man tag publish-formula release
 
 # Remote-mutating targets refuse to run without CONFIRM_* (CI sets inline).
 define confirm
@@ -95,7 +95,7 @@ clean: ## Remove build artifacts (bin/, dist/)
 ##@ Release
 
 snapshot: ## Build a local release snapshot (goreleaser, no publish)
-	goreleaser build --snapshot --clean
+	goreleaser release --snapshot --clean
 
 man: ## Lint hand-authored man pages (mandoc -Tlint, best-effort)
 	@set -e; \
@@ -110,6 +110,11 @@ tag: ## Create and push git tag VERSION=x.y.z (triggers release workflow)
 	@test -n "$(VERSION)" || { echo "VERSION=x.y.z required" >&2; exit 1; }
 	git tag "v$(VERSION)"
 	git push origin "v$(VERSION)"
+
+publish-formula: ## Render and push Formula/triage.rb from dist/ (VERSION=x.y.z; CONFIRM_PUBLISH_FORMULA=1)
+	$(call confirm,PUBLISH_FORMULA)
+	@test -n "$(VERSION)" || { echo "VERSION=x.y.z required" >&2; exit 1; }
+	scripts/publish-formula.sh "$(VERSION)" dist
 
 ##@ Danger
 

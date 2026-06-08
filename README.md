@@ -45,16 +45,18 @@ triage (profile: default)
   byte-identical at any `--jobs` (`-j 1` is fully sequential). Pin a check or
   group with `serial: true` for a shared scarce resource (lock, rate-limited
   auth, keychain).
-- **Cross-platform.** macOS and Linux today; Windows coming soon.
+- **Cross-platform.** macOS, Linux, and WSL2 via Homebrew; native Windows
+  `.exe` ships on GitHub Releases (scoop/winget packaging in m7).
 
 ## Quick start
 
 ```sh
 # Released: install from the dedicated tap (not homebrew-core)
-brew install --cask lolay/tap/triage
+brew install lolay/tap/triage
 
 # Or download a release tarball from GitHub Releases
 # https://github.com/lolay/triage/releases
+# WSL2 uses the Linux formula above; native Windows: grab triage_*.zip from Releases
 
 # Pre-release / hacking: build from source (make is the source of truth)
 git clone https://github.com/lolay/triage.git && cd triage
@@ -67,7 +69,7 @@ triage --profile release               # stricter preflight before you ship
 triage path/to/triage.yaml             # explicit config file or directory
 ```
 
-After `brew install --cask lolay/tap/triage` (or extracting a release tarball with the
+After `brew install lolay/tap/triage` (or extracting a release tarball with the
 included man pages), `man triage` shows the CLI manual and `man 5 triage` shows
 the full config file format. Man page sources: [`man/`](./man/).
 

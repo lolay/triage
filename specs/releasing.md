@@ -22,7 +22,7 @@ flowchart TD
 | --- | --- | --- |
 | **1** | Build matrix, archives, checksums, man pages bundled | Inside `goreleaser release` (no publish until green) |
 | **2** | GitHub Release upload | `lolay/triage` — goreleaser `release:` |
-| **3a** | Homebrew formula bump + direct commit | `lolay/homebrew-tap` — goreleaser `brews:` (after release URLs exist) |
+| **3a** | Homebrew formula bump + direct commit | `lolay/homebrew-tap` — `scripts/publish-formula.sh` (after release URLs exist) |
 | **3b** | Floating consumer tags `vX.Y`, `vX` | `.github/workflows/release.yml` — **last** |
 
 **Why this order:** the tap formula references `releases/download/vX.Y.Z/…`
@@ -52,7 +52,7 @@ Floating tags (stable releases only — skip prereleases containing `-`):
 | `vX` | Retagged to latest `X.*` |
 
 Promoted in the `promote-floating-tags` job with plain `--force` after
-goreleaser succeeds.
+goreleaser and the formula publish succeed.
 
 ## Pre-flight
 
@@ -75,7 +75,8 @@ make tag VERSION=0.1.0    # CONFIRM_TAG=1 — creates and pushes v0.1.0
 
 That tag push triggers [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 
-1. **`release` job** — `goreleaser release --clean` (Phases 1–3a).
+1. **`release` job** — `goreleaser release --clean` (Phases 1–2), then
+   `scripts/publish-formula.sh` (Phase 3a; skipped for prerelease tags).
 2. **`promote-floating-tags` job** — `needs: release` (Phase 3b, last).
 
 Manual re-run: **Actions → Release → Run workflow** (must be on a tag ref for
@@ -86,6 +87,7 @@ Local maintainer publish (emergency only):
 ```bash
 git checkout vX.Y.Z
 CONFIRM_RELEASE=1 make release
+CONFIRM_PUBLISH_FORMULA=1 make publish-formula VERSION=X.Y.Z
 ```
 
 Requires `GITHUB_TOKEN` and `HOMEBREW_TAP_TOKEN` in the environment.
@@ -99,16 +101,20 @@ Requires `GITHUB_TOKEN` and `HOMEBREW_TAP_TOKEN` in the environment.
 | `snapshot` | Release | Local goreleaser build, no publish |
 | `man` | Release | `mandoc -Tlint` on `man/triage.{1,5}` |
 | `tag` | Release | Create + push `v$(VERSION)` (`CONFIRM_TAG=1`) |
+| `publish-formula` | Release | Render + push `Formula/triage.rb` (`CONFIRM_PUBLISH_FORMULA=1`) |
 | `release` | Danger | `goreleaser release --clean` (`CONFIRM_RELEASE=1`) |
 
 ### GoReleaser (`.goreleaser.yaml`)
 
-- **Matrix:** darwin/linux × amd64/arm64
-- **Archives:** `triage_<ver>_<os>_<arch>.tar.gz` + `checksums.txt`
+- **Matrix:** darwin/linux/windows × amd64/arm64 (windows archives as `.zip`;
+  formula covers the four unix targets only)
+- **Archives:** `triage_<ver>_<os>_<arch>.tar.gz` (unix) or `.zip` (windows) +
+  `checksums.txt`
 - **Man pages:** `man/triage.1`, `man/triage.5` in archives and as standalone
   release assets
-- **Homebrew:** direct commit to `lolay/homebrew-tap` → `Casks/triage.rb`
-  (commit message `triage X.Y.Z`)
+- **Homebrew:** `scripts/publish-formula.sh` reads unix tarball sha256s from
+  `dist/checksums.txt`, renders `scripts/triage.rb.tmpl`, and commits
+  `Formula/triage.rb` to `lolay/homebrew-tap` (commit message `triage X.Y.Z`)
 
 ### Git identity
 
@@ -123,35 +129,37 @@ triage-release-bot <triage-release-bot@lolay.com>
 | Secret | Used by | Purpose |
 | --- | --- | --- |
 | `GITHUB_TOKEN` | goreleaser release | GitHub Release + repo contents |
-| `HOMEBREW_TAP_TOKEN` | goreleaser brews | Push to `lolay/homebrew-tap` |
+| `HOMEBREW_TAP_TOKEN` | publish-formula.sh | Push to `lolay/homebrew-tap` |
 
 Fine-grained PAT for the tap: **Contents: Read and write** on `lolay/homebrew-tap`.
 
 ## Homebrew tap bootstrap (one-time)
 
 1. Ensure [`lolay/homebrew-tap`](https://github.com/lolay/homebrew-tap) exists with
-   `Casks/triage.rb` placeholder (or let the first goreleaser release create it).
+   a `Formula/` directory (or let the first release create `Formula/triage.rb`).
 2. Add `HOMEBREW_TAP_TOKEN` to repo secrets.
-3. Install: `brew install --cask lolay/tap/triage`
+3. Install: `brew install lolay/tap/triage`
 
-Formula installs the binary plus `man/triage.1` and `man/triage.5` via
-goreleaser `extra_install`.
+The formula installs the `triage` binary plus `triage.1` and `triage.5` from the
+downloaded tarball (`bin.install`, `man1.install`, `man5.install`).
 
 ## Post-release verification
 
-1. GitHub Release on `lolay/triage` has four platform tarballs, `checksums.txt`,
-   and standalone `triage.1` / `triage.5`.
-2. `brew update && brew upgrade triage` picks up the new formula commit.
-3. `triage --version` matches the tag.
-4. Floating tags `vX.Y` and `vX` point at the new commit.
-5. `man triage` / `man 5 triage` after tap install.
+1. GitHub Release on `lolay/triage` has six platform archives (four unix tarballs +
+   two windows zips), `checksums.txt`, and standalone `triage.1` / `triage.5`.
+2. `Formula/triage.rb` on `lolay/homebrew-tap` matches the release version.
+3. `brew update && brew install lolay/tap/triage` works on macOS, Linux, and WSL2;
+   `brew upgrade triage` picks up the new formula commit.
+4. `triage --version` matches the tag.
+5. Floating tags `vX.Y` and `vX` point at the new commit.
+6. `man triage` / `man 5 triage` after tap install.
 
 ## Distribution channels (v1)
 
 | Channel | Status |
 | --- | --- |
-| Homebrew tap `lolay/tap/triage` | Primary |
-| GitHub Release binaries | Primary |
+| Homebrew tap `lolay/tap/triage` | Primary (macOS, Linux, WSL2) |
+| GitHub Release binaries | Primary (all six targets; native Windows via `.zip`) |
 | `go install` | Deferred (m7) |
 | `curl \| sh` installer | Dropped |
 | scoop | Deferred (m7, Windows) — single Windows channel |

@@ -36,10 +36,12 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 
 ### m5 — Release & distribution
 
-- s1 — [exec] `goreleaser` build matrix (macOS+Linux × arm64/x64 for v1) + GitHub
-  release assets + manpage; release pipeline promotes **floating git tags**
+- s1 — [exec] `goreleaser` build matrix (darwin/linux/windows × amd64/arm64 for v1)
+  + GitHub release assets + manpage; release pipeline promotes **floating git tags**
   (`v0.3`, `v0`) alongside exact `v0.3.1` on `lolay/triage`
-- s2 — [exec] Homebrew tap formula + automated version bump on release (goreleaser → direct tap commit on `lolay/homebrew-tap`)
+- s2 — [exec] Homebrew tap formula (binary-download, `on_macos`/`on_linux`,
+  `livecheck`) + automated bump via `scripts/publish-formula.sh` (GoReleaser
+  `brews`/`homebrew_casks` deprecated)
 - s3 — ~~[fast] `curl | sh` installer~~ **dropped** — tap + GitHub release assets only
 - s4 — [fast] Lightweight update banner: cached GitHub `releases/latest` check,
   one-liner above board, `TRIAGE_NO_UPDATE_CHECK` / `--no-update-check` (§7.2)
@@ -119,7 +121,12 @@ from `lolay/triage-action` once the Developer Agreement is accepted.
 
 ### m7 — Forward-looking (deferred)
 
-- s1 — [exec] Native Windows: add `windows/{amd64,arm64}` to the matrix, CI on Windows, `scoop` (the single Windows package-manager channel; `winget` / `chocolatey` deferred)
+- s1 — [exec] Native Windows packaging: build matrix already produces
+  `windows/{amd64,arm64}` as of m5; remaining work is CI-on-Windows + `scoop`
+  (the single Windows package-manager channel; `winget` / `chocolatey` deferred)
+- s1b — [exec] macOS sign + notarize: GoReleaser `notarize:` block + Apple
+  secrets (Developer ID Application `.p12`, App Store Connect API key) for
+  direct-download trust; not required for the Homebrew formula path
 - s2 — [deep] `--fix`: per-check `fix=`, `--dry-run`, confirmation, safety model
 - s3 — [fast] `go install <module>@latest` path
 - s4 — [exec] Cooperate-with-version-managers polish (`version_from` for `.tool-versions`/`mise.toml`); optional `optional`-tier UX refinements

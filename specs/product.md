@@ -98,8 +98,9 @@ Three tiers — what's available when:
 root Makefile is the source of truth for local dev, agents, and CI — same verbs
 everywhere.
 - **Primary (released):** dedicated Homebrew tap (`brew install <org>/tap/triage`
-— not homebrew-core; auto-taps on first install) plus GitHub release binaries
-(goreleaser; multi-platform single binary + manpages).
+— not homebrew-core; auto-taps on first install) — a cross-platform
+binary-download formula (`on_macos`/`on_linux`; WSL2 uses the Linux build) —
+plus GitHub release binaries (goreleaser; six-target matrix + manpages).
 - **CI (m6):** sibling repo [`lolay/triage-action`](https://github.com/lolay/triage-action)
   — root `action.yml` (GitHub Marketplace–eligible); `uses: lolay/triage-action@v<tag>`;
   installs CLI from `lolay/triage` release assets ([milestones.md](milestones.md) m6).
