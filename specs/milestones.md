@@ -1,9 +1,10 @@
 # triage — Milestones
 
-Sequenced **parity-first**: m1–m2 stand up the tool; m3–m5 reach feature-parity
+Sequenced **parity-first**: m1–m2 stand up the tool; m3–m4 reach feature-parity
 with real-world bash doctor scripts (validated via `examples/` + golden fixtures);
-m6 ships CI adoption via sibling **`lolay/triage-action`**; m7 is forward-looking. Each
-milestone is shippable. **Repo migration is not a milestone in this repo.**
+m5 ships the release pipeline and distribution; m6 ships CI adoption via sibling
+**`lolay/triage-action`**; m7 is forward-looking. Each milestone is shippable.
+**Repo migration is not a milestone in this repo.**
 
 > Tags per the model-tier convention: `[deep]` architecture/ambiguous,
 > `[exec]` repo-aware implementation, `[fast]` mechanical/fully-spec'd.
@@ -34,7 +35,7 @@ milestone is shippable. **Repo migration is not a milestone in this repo.**
 - s3 — [exec] **Deferred.** `triage-<name>` PATH-plugin discovery + contract was dropped from m4 per the owner; the delegate/workspace golden fixtures it would have carried ship with s2 instead. Revisit post-m4 if a real plugin need appears.
 - s4 — [deep] Bounded worker pool + `--jobs`/`-j` (default ≈ NumCPU, `1` = sequential): run local checks **and** sibling delegates concurrently; `serial:` opt-out on check/group; render and `--command-log` materialize in **list order** (per-probe spool → ordered concat) so golden output is timing-independent (§5, §7.2). Highest payoff here because delegate-heavy workspaces dominate runtime
 
-### m5 — Release & distribution
+### ~~m5 — Release & distribution~~ ✓
 
 - s1 — [exec] `goreleaser` build matrix (darwin/linux/windows × amd64/arm64 for v1)
   + GitHub release assets + manpage; release pipeline promotes **floating git tags**
