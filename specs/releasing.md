@@ -154,7 +154,8 @@ goreleaser `extra_install`.
 | GitHub Release binaries | Primary |
 | `go install` | Deferred (m7) |
 | `curl \| sh` installer | Dropped |
-| scoop / winget | Deferred (m7, Windows) |
+| scoop | Deferred (m7, Windows) — single Windows channel |
+| winget / chocolatey | Deferred — scoop is the only planned Windows channel |
 
 ## See also
 

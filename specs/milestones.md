@@ -104,13 +104,22 @@ from `lolay/triage-action` once the Developer Agreement is accepted.
   codes (`0`/`1`/`3`) unchanged
 - s2 — [exec] Bootstrap **`lolay/triage-action`** (root `action.yml` + install step);
   dogfood here via `uses: lolay/triage-action@v…`; cross-link READMEs; list on
-  Marketplace
+  Marketplace. **Runner-friendly install (the "normal" channel):** the install
+  step uses the runner **tool-cache** (`@actions/tool-cache`: `tc.find` →
+  `tc.downloadTool` → `cacheDir` → `core.addPath`) keyed on the goreleaser
+  `triage_<ver>_<os>_<arch>` asset, so warm runners skip the re-download and the
+  UX matches the official `setup-*` actions. Keeping that asset-name convention
+  also lets generic installer actions (e.g. `action-install-gh-release`)
+  auto-match `triage` with no custom code. **Not** an `actions/runner-images`
+  preinstall — a small, sub-second-install Go binary doesn't meet that bar
+  (popularity + 30s-install + image-footprint criteria); on-demand action +
+  tool-cache is the idiomatic path
 - s3 — [fast] Floating-tag release workflow for triage-action; coordinated semver
   with `lolay/triage`; example workflow for `profile: ci` / `--json`
 
 ### m7 — Forward-looking (deferred)
 
-- s1 — [exec] Native Windows: add `windows/{amd64,arm64}` to the matrix, CI on Windows, `scoop`/`winget`
+- s1 — [exec] Native Windows: add `windows/{amd64,arm64}` to the matrix, CI on Windows, `scoop` (the single Windows package-manager channel; `winget` / `chocolatey` deferred)
 - s2 — [deep] `--fix`: per-check `fix=`, `--dry-run`, confirmation, safety model
 - s3 — [fast] `go install <module>@latest` path
 - s4 — [exec] Cooperate-with-version-managers polish (`version_from` for `.tool-versions`/`mise.toml`); optional `optional`-tier UX refinements
