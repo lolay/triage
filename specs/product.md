@@ -104,6 +104,7 @@ plus GitHub release binaries (goreleaser; six-target matrix + manpages).
 - **CI (m6):** sibling repo [`lolay/triage-action`](https://github.com/lolay/triage-action)
   — root `action.yml` (GitHub Marketplace–eligible); `uses: lolay/triage-action@v<tag>`;
   installs CLI from `lolay/triage` release assets ([milestones.md](milestones.md) m6).
+  Contract: [`action.md`](action.md).
 - **Eventually:** `go install <module>@latest` — deferred, not a v1 path.
 - **Later:** `curl … | sh` installer; `scoop` once Windows binaries ship — the
 single Windows package-manager channel (`winget` / `chocolatey` deferred).

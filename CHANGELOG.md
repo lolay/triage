@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] — m6: GitHub Action
+
+### Added
+- `specs/action.md` — canonical contract for the `lolay/triage-action` composite
+  action: typed inputs for the CI-relevant flags (`strict`, `severity`, `json`,
+  `quiet`, `verbose`, `command-log`, `jobs`, …) plus an `args` escape hatch, outputs,
+  tokenless CLI version resolution (`version` input → root `VERSION` file → fail
+  fast), OS/arch + checksum asset mapping, exit-code forwarding (no `fail-on` in
+  v1), coordinated semver/floating tags (`vX.Y` + `vX`), and the finalized
+  `action.yml` / `install.sh` / `run.sh` shapes.
+
+### Changed
+- `specs/product.md` §3 and `specs/milestones.md` m6 cross-link the new
+  `specs/action.md` contract.
+
+---
+
 ## [Unreleased] — m5: release & distribution pipeline
 
 _2026-06-07 · commit `afddce6`_

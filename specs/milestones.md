@@ -75,9 +75,11 @@ assets** — not from the action repo's tag contents.
 and action `v0.3.1` on `lolay/triage-action` in the same release beat). Document
 the pairing in both READMEs.
 
-**Default CLI pin:** derive from the action ref (`github.action_ref` → `v0.3.1` →
-download `triage_0.3.1_…` from `lolay/triage` releases). Optional input
-**`version`** overrides the CLI release when needed.
+**Default CLI pin:** the committed **`VERSION` file** at the action root (bumped
+by the release workflow at tag time) pins the CLI version — so floating tags
+resolve deterministically and tokenlessly (download `triage_<ver>_…` from
+`lolay/triage` releases). Optional input **`version`** overrides it. See
+[`action.md`](action.md) §4 for the full resolution order.
 
 **Floating tags** on **`lolay/triage-action`** (GitHub does not semver-resolve):
 
@@ -85,7 +87,7 @@ download `triage_0.3.1_…` from `lolay/triage` releases). Optional input
 | --- | --- |
 | `v0.3.1` | Exact action release |
 | `v0.3` | **Retagged** to latest `0.3.x` action on each patch |
-| `v0` | **Retagged** to latest `0.x` (optional) |
+| `v0` | **Retagged** to latest `0.x` (major floating) |
 
 Promote `v0.3` / `v0` in the **triage-action** release workflow when `v0.3.1`
 ships. **`lolay/triage`** has its own floating tags for CLI/tap consumers (m5).
@@ -101,10 +103,12 @@ ships. **`lolay/triage`** has its own floating tags for CLI/tap consumers (m5).
 Do not document `@main` for external consumers. Publish to **GitHub Marketplace**
 from `lolay/triage-action` once the Developer Agreement is accepted.
 
-- s1 — [deep] Action contract: inputs (`profile`, `config`, `version`, `args` for
-  passthrough flags like `--strict`/`--severity`/`--json`); default CLI = action
-  ref → `lolay/triage` release asset (linux/macos × arm64/amd64); forward exit
-  codes (`0`/`1`/`3`) unchanged
+- s1 — [deep] Action contract (canonical reference: [`action.md`](action.md)):
+  typed inputs for the CI-relevant flags (`profile`, `config`, `strict`,
+  `severity`, `json`, `quiet`, `verbose`, `command-log`, `jobs`) plus an `args`
+  escape hatch; tokenless version resolution (`version` input → root `VERSION` file →
+  fail fast); CLI installed from `lolay/triage` release assets
+  (linux/macos × arm64/amd64); forward exit codes (`0`/`1`/`3`) unchanged
 - s2 — [exec] Bootstrap **`lolay/triage-action`** (root `action.yml` + install step);
   dogfood here via `uses: lolay/triage-action@v…`; cross-link READMEs; list on
   Marketplace. **Runner-friendly install (the "normal" channel):** the install
