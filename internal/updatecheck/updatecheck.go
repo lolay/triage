@@ -32,13 +32,14 @@ type Result struct {
 }
 
 // Options configures an update check run.
+// Field order is optimised to minimise the GC pointer-scan range.
 type Options struct {
+	HTTPClient     *http.Client     // default: 300ms timeout client
+	Now            func() time.Time // default: time.Now
+	IsBrewInstall  func() bool      // default: brew list triage
 	CurrentVersion string
-	CacheDir       string       // default: os.UserCacheDir()/triage
-	HTTPClient     *http.Client // default: 300ms timeout client
-	LatestURL      string       // default: githubLatestURL (override in tests)
-	Now            func() time.Time
-	IsBrewInstall  func() bool // default: brew list triage
+	CacheDir       string // default: os.UserCacheDir()/triage
+	LatestURL      string // default: githubLatestURL (override in tests)
 }
 
 // Notice returns an update Result when a newer release exists, or nil when the
@@ -55,8 +56,8 @@ func Notice(ctx context.Context, opts Options) *Result {
 
 	cachePath := cacheFilePath(opts.CacheDir)
 	if cached, ok := readCache(cachePath, opts.Now); ok {
-		latest, err := semver.NewVersion(normalizeVersion(cached))
-		if err != nil {
+		latest, cacheErr := semver.NewVersion(normalizeVersion(cached))
+		if cacheErr != nil {
 			return nil
 		}
 		return compare(current, latest, opts)
@@ -128,9 +129,10 @@ func normalizeVersion(v string) string {
 	return v
 }
 
+// field order is optimised to minimise the GC pointer-scan range.
 type cacheEntry struct {
-	Latest    string    `json:"latest"`
 	CheckedAt time.Time `json:"checked_at"`
+	Latest    string    `json:"latest"`
 }
 
 func cacheFilePath(dir string) string {
@@ -145,7 +147,7 @@ func cacheFilePath(dir string) string {
 }
 
 func readCache(path string, nowFn func() time.Time) (string, bool) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return "", false
 	}
@@ -176,8 +178,8 @@ func writeCache(path, latest string, nowFn func() time.Time) {
 	if err != nil {
 		return
 	}
-	_ = os.MkdirAll(filepath.Dir(path), 0o755)
-	_ = os.WriteFile(path, data, 0o644)
+	_ = os.MkdirAll(filepath.Dir(path), 0o750)
+	_ = os.WriteFile(path, data, 0o600)
 }
 
 type githubRelease struct {

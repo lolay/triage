@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased] — m6: GitHub Action
+## [v0.3.0] — 2026-06-08
 
 ### Added
 - `specs/action.md` — canonical contract for the `lolay/triage-action` composite
@@ -19,10 +19,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `ci` profile in `triage.yaml` (extends `default`, adds `gh` for CI workflows).
 - README **CI / GitHub Actions** section with `lolay/triage-action@v0.3` example.
 
-
 ### Changed
 - `specs/product.md` §3 and `specs/milestones.md` m6 cross-link the new
   `specs/action.md` contract.
+
+### Fixed
+- `internal/updatecheck`: struct field ordering, permission bits (0o750/0o600),
+  filepath.Clean on cache reads, shadowed `err` variable.
 
 ---
 
