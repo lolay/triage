@@ -7,8 +7,14 @@
 #
 # Canonical location: repo root. See specs/config.md for the full config reference and
 # examples/ for (fictional) configs exercising every feature.
+#
+# Profile hierarchy:
+#   base    — git + go (used by CI runners and as the foundation for everything)
+#   default — extends base, adds golangci-lint (full local dev environment)
+#   release — extends default, adds release toolchain
+#   ci      — extends base (not default), adds gh; no dev-only tools
 
-default:
+base:
   - group: Core
     items:
       - tool: git
@@ -18,10 +24,14 @@ default:
       - tool: go
         version_from: .go-version
         hint: https://go.dev/dl
-  - group: Lint
-    items:
-      - tool: golangci-lint
-        hint: run 'make init' to install the pinned version
+
+default:
+  extends: [base]
+  add:
+    - group: Lint
+      items:
+        - tool: golangci-lint
+          hint: run 'make init INSTALL_PACKAGES=1' to install
 
 release:
   extends: [default]
@@ -34,6 +44,7 @@ release:
           hint: brew install goreleaser
         - tool: mandoc
           hint: brew install mandoc
+
 ci:
   extends: [default]
   add:

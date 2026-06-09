@@ -27,6 +27,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   not already present; bare `make init` only downloads Go module dependencies.
 - `golangci-lint` severity in `triage.yaml` promoted from `warn` to required;
   `make doctor` now fails if it is not installed.
+- Introduced a `base` profile (git + go) in `triage.yaml`; `default` extends
+  it and adds golangci-lint; `ci` extends `default` (lint is part of CI);
+  `release` extends `default` and adds release toolchain.
+- `triage-action dogfood` CI job now installs golangci-lint before running
+  triage so the `ci` profile check passes.
 
 ### Added
 - `version: 1` root field in `triage.yaml` (optional; absent defaults to 1).
