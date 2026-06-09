@@ -281,18 +281,46 @@ func TestLoad_AllTypeKeys(t *testing.T) {
 	}
 }
 
-func TestLoad_GroupLegacyString(t *testing.T) {
+func TestLoad_FlatGroupRejected(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "triage.yaml", `default:
   - tool: git
     group: Core
 `)
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	require.Error(t, err, "load")
+	assert.ErrorContains(t, err, "multiple type keys")
+	assert.ErrorContains(t, err, "group: and items:")
+}
+
+func TestLoad_GrouplessProfile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: git
+  - tool: go
+`)
 	cfg, err := load(filepath.Join(dir, "triage.yaml"))
 	require.NoError(t, err, "load")
-	require.NotEmpty(t, cfg.Profiles["default"])
-	c := cfg.Profiles["default"][0]
-	assert.Equal(t, TypeTool, c.Type, "type")
-	assert.Equal(t, "Core", c.Group, "group")
+	require.Len(t, cfg.Profiles["default"], 2, "checks")
+	assert.Equal(t, TypeTool, cfg.Profiles["default"][0].Type)
+	assert.Equal(t, "git", cfg.Profiles["default"][0].Value)
+}
+
+func TestLoad_MixedGroupsAndTopLevel(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: git
+  - group: Toolchain
+    items:
+      - tool: go
+  - tool: make
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	require.Len(t, cfg.Profiles["default"], 3, "checks")
+	assert.Equal(t, TypeGroup, cfg.Profiles["default"][1].Type)
+	assert.Equal(t, "Toolchain", cfg.Profiles["default"][1].Value)
+	require.Len(t, cfg.Profiles["default"][1].Items, 1)
 }
 
 func TestLoad_EmptyDocument(t *testing.T) {

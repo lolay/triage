@@ -260,10 +260,6 @@ with the group's name and worst-status glyph; child checks (and nested group
 headers) indent underneath. Checks without a containing `group` render at the
 top level. Each non-pass line carries its actionable hint.
 
-Legacy: a bare **`group: Foo` string field** on a check still rolls checks into
-the same section at render time (flat grouping, no nesting) — useful for small
-configs; structural `group` containers are preferred when sections nest.
-
 ```
 triage (profile: default)
 
@@ -460,7 +456,7 @@ is the important part.
 | Flag                                     | Effect                                                                                    |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `--profile <name>`                       | Select profile (replaces `MODE=`)                                                         |
-| `--json`                                 | Machine/agent-readable: per-check `{group, name, severity, status, detail}` + counts (`status` may be `running` while in flight) |
+| `--json`                                 | Machine/agent-readable: per-check `{name, severity, status, detail}` + counts (`status` may be `running` while in flight) |
 | `--quiet`                                | Suppress `[✓]` passes; show only `[!]`/`[✗]` + summary                                    |
 | `--strict`                               | Treat `warn` as `error` (warnings fail the run)                                           |
 | `--severity`                             | Severity-graded exit ladder — `0`/`1`/`2`/`3` so callers can branch on warnings vs errors |

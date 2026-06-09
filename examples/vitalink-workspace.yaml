@@ -6,9 +6,10 @@
 # (or cd examples/vitalink-workspace && triage)
 
 default:
-  - path: vitalink-workspace/workspace.ok
-    label: workspace ready
-    group: Workspace
+  - group: Workspace
+    items:
+      - path: vitalink-workspace/workspace.ok
+        label: workspace ready
   - delegate: vitalink-api
     config: vitalink-workspace/vitalink-api/triage.yaml
   - delegate: vitalink-infra

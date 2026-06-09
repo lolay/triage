@@ -72,9 +72,6 @@ func (s *TTYSink) Emit(r engine.Result) {
 	}
 
 	indent := strings.Repeat("    ", r.Depth)
-	if r.Group != "" {
-		indent = "    " + indent
-	}
 	glyph := glyphFor(r, s.opts)
 	line := fmt.Sprintf("%s%s %s", indent, glyph, r.Label)
 	if !r.Pass && r.Message != "" {

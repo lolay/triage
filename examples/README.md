@@ -22,9 +22,9 @@ Or `cd` into a directory that contains a config and run `triage` with no args.
 
 ## Grouping
 
-Examples use **structural `group` containers** (`group:` + `items:`) where
-sections nest (`otoscope-mac.yaml`). A bare **`group: Foo` string field** on a
-check is still valid (output-only shorthand) — see `vitalink-api.yaml`.
+Examples use **structural `group` containers** (`group:` + `items:`). Checks
+without a containing group render at the top level (mixed layout). Nested
+sections appear in `otoscope-mac.yaml`.
 
 | File | Shape | Features exercised |
 |---|---|---|
@@ -33,7 +33,7 @@ check is still valid (output-only shorthand) — see `vitalink-api.yaml`.
 | [`vitalink-web.yaml`](vitalink-web.yaml) | Node/pnpm app | `version_from` (`.nvmrc`), `one_of` (pnpm/npm), `severity: warn`, **firebase + gcloud auth/session** |
 | [`vitalink-infra.yaml`](vitalink-infra.yaml) | Terraform | `version_from` (`.terraform-version`), empty release profile |
 | [`otoscope-mac.yaml`](otoscope-mac.yaml) | macOS Swift app | structural **`group`+`items:`**, `command`+`platform`, `path`, heterogeneous `one_of`, keychain/xcrun/Xcode, `warn` |
-| [`vitalink-workspace.yaml`](vitalink-workspace.yaml) / [`vitalink-workspace/`](vitalink-workspace/) | estate root | `delegate` checks (nested tree output) + legacy `group:` shorthand; runnable with path-only member checks |
+| [`vitalink-workspace.yaml`](vitalink-workspace.yaml) / [`vitalink-workspace/`](vitalink-workspace/) | estate root | mixed layout: structural `Workspace` group + top-level `delegate` checks (nested tree output); runnable with path-only member checks |
 | [`../triage.yaml`](../triage.yaml) | **this repo** (dogfood) | `tool`, `version_from`, `extends`, `severity: warn` |
 
 ## Auth / session checks

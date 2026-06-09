@@ -140,7 +140,6 @@ a failure is treated*.
 | `hint` | Human-readable remediation shown on failure |
 | `dir` | Working directory for the check (default: config directory) |
 | `serial` | Opt out of concurrency for this check or group |
-| `group` | Legacy string field — flat output grouping; prefer structural `group` container |
 
 ---
 
@@ -268,18 +267,23 @@ allowed; cycles → config error (exit `3`).
 Container type; `items:` holds child checks and nested groups. Optional
 `platform:` skips the whole section on non-matching OS.
 
+Checks without a containing `group` render at the top level. A profile may mix
+top-level checks and `group` containers in any order.
+
 ---
 
 ## Workspace patterns
 
 ```yaml
 default:
-  - tool: make
-    group: Workspace
-  - command: make doctor MODE={{profile}}
-    label: vitalink-web
-    dir: vitalink-web
-    group: Members
+  - group: Workspace
+    items:
+      - tool: make
+  - group: Members
+    items:
+      - command: make doctor MODE={{profile}}
+        label: vitalink-web
+        dir: vitalink-web
   - delegate: vitalink-api
     dir: vitalink-api
   - delegate: vitalink-infra

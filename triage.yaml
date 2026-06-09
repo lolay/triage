@@ -9,34 +9,36 @@
 # examples/ for (fictional) configs exercising every feature.
 
 default:
-  - tool: git
-    group: Core
-    hint: https://git-scm.com
-  - tool: go
-    group: Toolchain
-    version_from: .go-version
-    hint: https://go.dev/dl
-  - tool: golangci-lint
-    group: Lint
-    severity: warn
-    hint: brew install golangci-lint
+  - group: Core
+    items:
+      - tool: git
+        hint: https://git-scm.com
+  - group: Toolchain
+    items:
+      - tool: go
+        version_from: .go-version
+        hint: https://go.dev/dl
+  - group: Lint
+    items:
+      - tool: golangci-lint
+        severity: warn
+        hint: brew install golangci-lint
 
 release:
   extends: [default]
   add:
-    - tool: gh
-      group: Release
-      hint: https://cli.github.com
-    - tool: goreleaser
-      group: Release
-      hint: brew install goreleaser
-    - tool: mandoc
-      group: Release
-      hint: brew install mandoc
+    - group: Release
+      items:
+        - tool: gh
+          hint: https://cli.github.com
+        - tool: goreleaser
+          hint: brew install goreleaser
+        - tool: mandoc
+          hint: brew install mandoc
 ci:
   extends: [default]
   add:
-    - tool: gh
-      group: CI
-      hint: https://cli.github.com
-
+    - group: CI
+      items:
+        - tool: gh
+          hint: https://cli.github.com

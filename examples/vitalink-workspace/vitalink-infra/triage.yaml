@@ -2,6 +2,7 @@
 # vitalink-infra member — path-only checks so the workspace example runs anywhere.
 
 default:
-  - path: infra.ok
-    label: infra stack ready
-    group: Toolchain
+  - group: Toolchain
+    items:
+      - path: infra.ok
+        label: infra stack ready

@@ -8,10 +8,11 @@ include:
   - vitalink-base.yaml
 
 default:
-  - tool: terraform
-    group: Toolchain
-    version_from: .terraform-version
-    hint: https://developer.hashicorp.com/terraform/install
+  - group: Toolchain
+    items:
+      - tool: terraform
+        version_from: .terraform-version
+        hint: https://developer.hashicorp.com/terraform/install
 
 release:
   extends: [default]

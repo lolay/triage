@@ -73,10 +73,6 @@
           "description": "Sugar for severity: true → error, false → warn.",
           "type": "boolean"
         },
-        "group": {
-          "description": "Legacy flat-section label. Prefer a structural 'group' container when nesting.",
-          "type": "string"
-        },
         "platform": { "$ref": "#/$defs/platform" },
         "hint": {
           "description": "Actionable remediation shown when the check is not passing.",

@@ -8,34 +8,33 @@ include:
   - vitalink-base.yaml
 
 default:
-  - tool: node
-    group: Toolchain
-    version_from: .nvmrc
-    hint: https://nodejs.org (see .nvmrc)
-  - one_of: [pnpm, npm]
-    group: Toolchain
-    hint: corepack enable && corepack prepare pnpm@latest --activate
-  - tool: biome
-    group: Lint
-    severity: warn
-    hint: pnpm add -D @biomejs/biome
+  - group: Toolchain
+    items:
+      - tool: node
+        version_from: .nvmrc
+        hint: https://nodejs.org (see .nvmrc)
+      - one_of: [pnpm, npm]
+        hint: corepack enable && corepack prepare pnpm@latest --activate
+  - group: Lint
+    items:
+      - tool: biome
+        severity: warn
+        hint: pnpm add -D @biomejs/biome
 
 release:
   extends: [default]
   add:
-    - tool: firebase
-      group: Deploy
-      hint: npm install -g firebase-tools
-    - command: firebase login:list
-      label: firebase authenticated
-      group: Deploy
-      contains: "@"
-      hint: firebase login
-    - tool: gcloud
-      group: Deploy
-      hint: https://cloud.google.com/sdk/docs/install
-    - command: gcloud auth print-access-token
-      label: gcloud logged in (token valid, not expired)
-      group: Deploy
-      platform: [macos, linux]
-      hint: gcloud auth login
+    - group: Deploy
+      items:
+        - tool: firebase
+          hint: npm install -g firebase-tools
+        - command: firebase login:list
+          label: firebase authenticated
+          contains: "@"
+          hint: firebase login
+        - tool: gcloud
+          hint: https://cloud.google.com/sdk/docs/install
+        - command: gcloud auth print-access-token
+          label: gcloud logged in (token valid, not expired)
+          platform: [macos, linux]
+          hint: gcloud auth login

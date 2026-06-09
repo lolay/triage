@@ -66,7 +66,6 @@ func TestExpandCheck_AllFields(t *testing.T) {
 		Value:      "{{ v }}",
 		Version:    "{{ v }}",
 		Constraint: "{{ v }}",
-		Group:      "{{ v }}",
 		Hint:       "{{ v }}",
 		Dir:        "{{ v }}",
 		Label:      "{{ v }}",

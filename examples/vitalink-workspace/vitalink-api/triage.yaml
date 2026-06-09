@@ -2,6 +2,7 @@
 # vitalink-api member — path-only checks so the workspace example runs anywhere.
 
 default:
-  - path: service.ok
-    label: api service ready
-    group: Service
+  - group: Service
+    items:
+      - path: service.ok
+        label: api service ready

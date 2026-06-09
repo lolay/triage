@@ -12,6 +12,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (lints hand-authored man pages before release); `mandoc` is `error` severity so
   `make doctor MODE=release` blocks on a missing install rather than silently
   shipping unvalidated man pages.
+- Dogfood `triage.yaml` and `examples/` now use structural `group` containers
+  (`group:` + `items:`) instead of the flat `group:` string field on each check.
+
+### Removed
+- Legacy flat `group:` string field on checks (e.g. `tool: git` + `group: Core`).
+  Grouping is hierarchical-only: use a structural `group` container with `items:`.
+  A profile may still omit groups entirely or mix top-level checks with `group`
+  containers.
 
 ---
 

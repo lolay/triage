@@ -28,7 +28,6 @@ const (
 //
 // Fields are ordered for struct alignment, not by topic. Notable ones:
 //   - Message: pass = found detail; fail = what went wrong + optional hint.
-//   - Group: legacy flat-section label (bare `group:` string field on a leaf).
 //   - Output: bounded excerpt of the subprocess combined output (capped at
 //     captureCap bytes), set on failure for --verbose replay and --json detail
 //     enrichment. Empty for instant checks (env, path, tool presence).
@@ -40,7 +39,6 @@ type Result struct {
 	cmdLog   *cmdLogEntry
 	Label    string
 	Message  string
-	Group    string
 	Output   string
 	Severity Severity
 	Depth    int

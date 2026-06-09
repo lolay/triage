@@ -26,8 +26,7 @@ type Config struct {
 // Profile is the ordered list of checks for a named profile.
 type Profile []Check
 
-// Check type keys (spec §5). Exactly one is the discriminator for any check;
-// group doubles as a legacy string field when another type key is present.
+// Check type keys (spec §5). Exactly one is the discriminator for any check.
 const (
 	TypeTool     = "tool"
 	TypeEnv      = "env"
@@ -46,10 +45,9 @@ const (
 //
 // Fields are ordered for struct alignment, not by topic:
 //   - common: Type (discriminator), Value (primary value), Severity, Required
-//     (sugar resolved to Severity by the engine), Group (legacy flat-section
-//     label), Platform (os guard), Hint, Dir, Label (required on command;
-//     identity key for command/one_of), Serial (run as a barrier under the
-//     global serial lock, §7.2).
+//     (sugar resolved to Severity by the engine), Platform (os guard), Hint,
+//     Dir, Label (required on command; identity key for command/one_of), Serial
+//     (run as a barrier under the global serial lock, §7.2).
 //   - tool: Version (range as written), VersionFrom (pin-file path), Constraint
 //     (resolved npm-style constraint from Version or VersionFrom).
 //   - group/one_of: Items (nested children), OneOf (alternatives; bare tool
@@ -69,7 +67,6 @@ type Check struct {
 	Dir         string
 	Severity    string
 	source      string
-	Group       string
 	VersionFrom string
 	Constraint  string
 	Config      string
@@ -137,8 +134,7 @@ type checkFields struct {
 }
 
 // UnmarshalYAML resolves the single reserved type key for a check, erroring on
-// zero or multiple primary type keys. `group` is the type only when no other
-// primary type key is present; otherwise it is the legacy string field.
+// zero or multiple primary type keys.
 func (c *Check) UnmarshalYAML(unmarshal func(any) error) error {
 	var f checkFields
 	if err := unmarshal(&f); err != nil {
@@ -168,28 +164,28 @@ func (c *Check) UnmarshalYAML(unmarshal func(any) error) error {
 	if f.Delegate != nil {
 		primary = append(primary, typeKey{TypeDelegate, *f.Delegate})
 	}
+	if f.Group != nil {
+		primary = append(primary, typeKey{TypeGroup, *f.Group})
+	}
 
 	switch len(primary) {
 	case 0:
-		if f.Group == nil {
-			return fmt.Errorf("check has no type key: expected one of " +
-				"tool/env/path/one_of/command/delegate/group")
-		}
-		c.Type = TypeGroup
-		c.Value = *f.Group
+		return fmt.Errorf("check has no type key: expected one of " +
+			"tool/env/path/one_of/command/delegate/group")
 	case 1:
 		c.Type = primary[0].name
 		c.Value = primary[0].value
-		if f.Group != nil { // legacy flat-section label alongside the real type
-			c.Group = *f.Group
-		}
 	default:
 		names := make([]string, len(primary))
 		for i, p := range primary {
 			names[i] = p.name
 		}
-		return fmt.Errorf("check has multiple type keys (%s): exactly one required",
+		msg := fmt.Sprintf("check has multiple type keys (%s): exactly one required",
 			strings.Join(names, ", "))
+		if f.Group != nil {
+			msg += "; nest checks under a structural group via group: and items:"
+		}
+		return fmt.Errorf("%s", msg)
 	}
 
 	c.Severity = f.Severity

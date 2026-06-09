@@ -276,7 +276,6 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 			Pass:     false,
 			Message:  err.Error(),
 			Depth:    depth,
-			Group:    c.Group,
 			Kind:     KindLeaf,
 		}}
 	}
@@ -294,7 +293,6 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 		res := checkTool(ctx, c.Value, c.Constraint, c.Hint, o)
 		res.Severity = sev
 		res.Depth = depth
-		res.Group = c.Group
 		res.Kind = KindLeaf
 		// Build a friendlier label that includes version detail on pass.
 		if res.Pass && c.Constraint != "" {
@@ -315,7 +313,6 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 		res.Label = c.Value
 		res.Severity = sev
 		res.Depth = depth
-		res.Group = c.Group
 		res.Kind = KindLeaf
 		return []Result{res}
 
@@ -328,7 +325,6 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 		res.Label = c.Value
 		res.Severity = sev
 		res.Depth = depth
-		res.Group = c.Group
 		res.Kind = KindLeaf
 		return []Result{res}
 
@@ -345,7 +341,6 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 		res.Label = label
 		res.Severity = sev
 		res.Depth = depth
-		res.Group = c.Group
 		res.Kind = KindLeaf
 		return []Result{res}
 
@@ -371,7 +366,6 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 			Pass:     true,
 			Message:  fmt.Sprintf("%s (unsupported check type)", c.Type),
 			Depth:    depth,
-			Group:    c.Group,
 			Kind:     KindLeaf,
 		}}
 	}
@@ -403,7 +397,6 @@ func (r *Runner) checkOneOf(ctx context.Context, c config.Check, depth int) Resu
 				Pass:     true,
 				Message:  results[0].Message,
 				Depth:    depth,
-				Group:    c.Group,
 				Kind:     KindLeaf,
 			}
 		}
@@ -419,7 +412,6 @@ func (r *Runner) checkOneOf(ctx context.Context, c config.Check, depth int) Resu
 		Pass:     false,
 		Message:  msg,
 		Depth:    depth,
-		Group:    c.Group,
 		Kind:     KindLeaf,
 	}
 }
@@ -515,7 +507,6 @@ func (r *Runner) runDelegate(ctx context.Context, c config.Check, depth int) []R
 			Pass:     false,
 			Message:  fmt.Sprintf("delegate %q: %v", label, err),
 			Depth:    depth,
-			Group:    c.Group,
 			Kind:     KindLeaf,
 		}}
 	}
@@ -531,7 +522,6 @@ func (r *Runner) runDelegate(ctx context.Context, c config.Check, depth int) []R
 			Pass:     false,
 			Message:  fmt.Sprintf("delegate %q: cycle detected at %s", label, absPath),
 			Depth:    depth,
-			Group:    c.Group,
 			Kind:     KindLeaf,
 		}}
 	}
@@ -569,7 +559,6 @@ func (r *Runner) runDelegate(ctx context.Context, c config.Check, depth int) []R
 		Severity: sev,
 		Pass:     pass,
 		Depth:    depth,
-		Group:    c.Group,
 		Kind:     KindDelegate,
 	}
 

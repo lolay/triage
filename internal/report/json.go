@@ -24,7 +24,6 @@ type JSONReport struct {
 //
 //nolint:govet // output key order is part of the JSON contract (spec §7.3)
 type JSONResult struct {
-	Group          string `json:"group,omitempty"`
 	Name           string `json:"name"`
 	Kind           string `json:"kind"` // "check" | "group" | "delegate"
 	Depth          int    `json:"depth"`
@@ -58,7 +57,6 @@ func buildJSONReport(profile, commandLogPath string, results []engine.Result) JS
 	}
 	for _, r := range results {
 		jr := JSONResult{
-			Group:    r.Group,
 			Name:     r.Label,
 			Kind:     jsonKind(r),
 			Depth:    r.Depth,

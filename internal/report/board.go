@@ -33,11 +33,8 @@ func Board(w io.Writer, results []engine.Result, opts BoardOpts) {
 }
 
 // renderResults emits one line per result in declaration order.
-// Structural group headers are printed at their depth; legacy `group:` string
-// fields get a synthetic header on first appearance with the group's worst glyph.
+// Structural group headers are printed at their depth.
 func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
-	lastLegacyGroup := ""
-
 	for i := range results {
 		r := results[i]
 
@@ -45,16 +42,7 @@ func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
 			indent := strings.Repeat("    ", r.Depth)
 			glyph := glyphFor(r, opts)
 			_, _ = fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Label)
-			lastLegacyGroup = ""
 			continue
-		}
-
-		// Legacy flat-section: emit a synthetic header on first appearance.
-		if r.Group != "" && r.Group != lastLegacyGroup {
-			glyph := worstGlyphForGroup(r.Group, results, opts)
-			indent := strings.Repeat("    ", r.Depth)
-			_, _ = fmt.Fprintf(w, "%s%s %s\n", indent, glyph, r.Group)
-			lastLegacyGroup = r.Group
 		}
 
 		if r.Pass && opts.Quiet {
@@ -62,10 +50,6 @@ func renderResults(w io.Writer, results []engine.Result, opts BoardOpts) {
 		}
 
 		indent := strings.Repeat("    ", r.Depth)
-		if r.Group != "" {
-			indent = "    " + indent
-		}
-
 		glyph := glyphFor(r, opts)
 		line := fmt.Sprintf("%s%s %s", indent, glyph, r.Label)
 		if !r.Pass && r.Message != "" {
@@ -128,25 +112,6 @@ func glyphFor(r engine.Result, opts BoardOpts) string {
 	default:
 		return color("[✗]", colorRed, opts)
 	}
-}
-
-// worstGlyphForGroup scans results for the given legacy-group name and returns
-// the glyph for the worst-status result in that group.
-func worstGlyphForGroup(group string, results []engine.Result, opts BoardOpts) string {
-	worst := engine.Result{Pass: true, Severity: engine.SeverityInfo, Kind: engine.KindLeaf}
-	for _, r := range results {
-		if r.Kind == engine.KindHeader || r.Kind == engine.KindDelegate || r.Group != group {
-			continue
-		}
-		if !r.Pass && worst.Pass {
-			worst = r
-			continue
-		}
-		if !r.Pass && r.Severity < worst.Severity {
-			worst = r
-		}
-	}
-	return glyphFor(worst, opts)
 }
 
 // plural returns "N word" / "N words".
