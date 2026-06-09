@@ -67,9 +67,24 @@ On `main`, before tagging:
 3. **`goreleaser check`** passes (`make snapshot` optional smoke).
 4. **`make man`** — mandoc lint on hand-authored pages (best-effort).
 5. **Secrets** configured (see below). First release also needs the Homebrew tap
-   and Scoop bucket bootstrapped.
+   and Scoop bucket bootstrapped. `RELEASE_TAG_PAT` is required for the
+   `workflow_dispatch` bump path.
 
 ## Cutting a release
+
+**Normal path — dispatch from GitHub Actions UI:**
+
+Go to **Actions → release → Run workflow**, pick `patch` / `minor` / `major`,
+and click **Run workflow**. The `cut-release` job will:
+
+1. Compute the next version from the latest tag + the chosen bump level.
+2. Update `CHANGELOG.md` — move `[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`.
+3. Commit and push to `main`, then push the `vX.Y.Z` tag using `RELEASE_TAG_PAT`.
+
+That tag push triggers the `release` and `promote-floating-tags` jobs (same as a
+manual `make tag`). Requires `RELEASE_TAG_PAT` in repo secrets (see below).
+
+**Manual path (emergency / local):**
 
 ```bash
 # From main, after CHANGELOG is ready:
@@ -83,8 +98,10 @@ That tag push triggers [`.github/workflows/release.yml`](../.github/workflows/re
    skipped for prerelease tags).
 2. **`promote-floating-tags` job** — `needs: release` (Phase 3b, last).
 
-Manual re-run: **Actions → Release → Run workflow** (must be on a tag ref for
-publish; normally you re-run the failed job on the tag push event).
+Manual re-run of a failed publish: **Actions → Release → Run workflow**, select
+the existing tag ref — both `release` and `promote-floating-tags` are gated on
+`startsWith(github.ref, 'refs/tags/v')` so they run; `cut-release` is gated on
+`workflow_dispatch` and is skipped.
 
 Local maintainer publish (emergency only):
 
@@ -138,12 +155,14 @@ triage-release-bot <triage-release-bot@lolay.com>
 
 | Secret | Used by | Purpose |
 | --- | --- | --- |
-| `GITHUB_TOKEN` | goreleaser release | GitHub Release + repo contents |
+| `GITHUB_TOKEN` | goreleaser release | GitHub Release + repo contents (auto-provided) |
+| `RELEASE_TAG_PAT` | cut-release job | Push bump commit + tag so the tag push re-triggers this workflow (Contents: write on `lolay/triage`) |
 | `HOMEBREW_TAP_TOKEN` | publish-formula.sh | Push to `lolay/homebrew-tap` |
 | `SCOOP_BUCKET_TOKEN` | publish-scoop.sh | Push to `lolay/scoop-bucket` |
 
 Fine-grained PATs: **Contents: Read and write** on `lolay/homebrew-tap` and
-`lolay/scoop-bucket`.
+`lolay/scoop-bucket`. `RELEASE_TAG_PAT` needs **Contents: Read and write** on
+`lolay/triage` itself.
 
 ## Homebrew tap bootstrap (one-time)
 

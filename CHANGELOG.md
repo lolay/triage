@@ -17,6 +17,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Windows-aware update banner: on Windows, suggests `scoop update triage` or
   `scoop install lolay/triage` instead of the Homebrew hint.
 - `ci-windows` CI job on `windows-latest` (`go build` + `go test`).
+- `workflow_dispatch` bump path in the release workflow: pick `patch` / `minor` /
+  `major` in the GitHub Actions UI, and the `cut-release` job computes the next
+  version, moves `[Unreleased]` in `CHANGELOG.md`, commits, and pushes the tag
+  (using `RELEASE_TAG_PAT`) to trigger the full publish pipeline.
 
 ### Changed
 - `triage.yaml` `release` profile: replaced `cosign` (no call site) with `mandoc`

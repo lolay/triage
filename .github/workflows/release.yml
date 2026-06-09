@@ -1,6 +1,10 @@
 # Release pipeline for lolay/triage.
 #
-# Trigger: push a semver tag vX.Y.Z (or workflow_dispatch for manual re-run).
+# Triggers:
+#   push tag vX.Y.Z  — normal release path (goreleaser + publish + floating tags)
+#   workflow_dispatch — bump the version, commit the CHANGELOG, tag, and push;
+#                       the tag push then re-triggers this workflow on the tag ref
+#                       to run the full publish pipeline (needs RELEASE_TAG_PAT).
 #
 # Remote pushes happen LAST and in order so a partial failure never leaves one
 # marketplace/channel updated while another is not:
@@ -17,6 +21,16 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      level:
+        description: 'SemVer bump level'
+        type: choice
+        required: true
+        default: 'patch'
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -28,6 +42,54 @@ env:
   GIT_COMMITTER_EMAIL: triage-release-bot@lolay.com
 
 jobs:
+  cut-release:
+    name: bump + tag
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      # Use RELEASE_TAG_PAT so the tag push below re-triggers this workflow on
+      # the tag ref. GITHUB_TOKEN-pushed tags do not trigger push events (GitHub
+      # prevents the recursion), but a PAT does — same pattern as lolay/nowline.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TAG_PAT }}
+
+      - name: Compute next version
+        id: ver
+        run: |
+          set -euo pipefail
+          LATEST=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo "v0.0.0")
+          VER="${LATEST#v}"
+          MAJOR="${VER%%.*}"
+          MINOR="${VER#*.}"; MINOR="${MINOR%%.*}"
+          PATCH="${VER##*.}"
+          case "${{ inputs.level }}" in
+            patch) PATCH=$((PATCH + 1)) ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+          esac
+          NEW="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=${NEW}" >> "$GITHUB_OUTPUT"
+          echo "Bumping ${LATEST} → v${NEW} (${{ inputs.level }})"
+
+      - name: Update CHANGELOG
+        run: |
+          set -euo pipefail
+          TODAY=$(date -u +%Y-%m-%d)
+          VERSION="${{ steps.ver.outputs.version }}"
+          sed -i "s/## \[Unreleased\]/## [${VERSION}] - ${TODAY}/" CHANGELOG.md
+          git add CHANGELOG.md
+          git commit -m "chore: release ${VERSION}"
+
+      - name: Tag and push
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          git tag "v${VERSION}"
+          git push origin HEAD
+          git push origin "v${VERSION}"
+
   release:
     name: goreleaser release
     if: startsWith(github.ref, 'refs/tags/v')
