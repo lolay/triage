@@ -8,6 +8,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- Removed `version: 1` from `triage.yaml`; the released v0.3.0 binary does
+  not yet recognise `version` as a reserved top-level key and rejects it as
+  an invalid profile, breaking the `triage-action` dogfood CI job.
 - gofmt drift in `internal/cli/init_test.go` that caused the Linux lint gate
   to fail.
 - Windows CI: added `.bat` companion stubs for every POSIX fake-binary in

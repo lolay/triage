@@ -8,8 +8,6 @@
 # Canonical location: repo root. See specs/config.md for the full config reference and
 # examples/ for (fictional) configs exercising every feature.
 
-version: 1
-
 default:
   - group: Core
     items:
