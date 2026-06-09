@@ -106,8 +106,8 @@ plus GitHub release binaries (goreleaser; six-target matrix + manpages).
   installs CLI from `lolay/triage` release assets ([milestones.md](milestones.md) m6).
   Contract: [`action.md`](action.md).
 - **Eventually:** `go install <module>@latest` — deferred, not a v1 path.
-- **Later:** `curl … | sh` installer; `scoop` once Windows binaries ship — the
-single Windows package-manager channel (`winget` / `chocolatey` deferred).
+- **Windows:** Scoop bucket `lolay/scoop-bucket` (`scoop install lolay/triage`)
+  — the single Windows package-manager channel (`winget` / `chocolatey` deferred).
 
 ### Native-Windows design rule (applies now, even though Windows ships later)
 
@@ -626,8 +626,8 @@ the owner runs before restarting; this spec already reads as `triage`.
 - **Distribution:** Apache-2.0; build from source via root Makefile (always);
 dedicated Homebrew tap + release binaries (m5); sibling `lolay/triage-action` for
 CI + Marketplace (m6);
-`go install` deferred (m7); scoop later — single Windows channel, winget/chocolatey deferred (§3, §11).
-- **Native Windows:** designed-for now (no implicit shell), shipped in m7 (§3).
+`go install` deferred (m7); Scoop bucket for native Windows (§3, §11).
+- **Native Windows:** designed-for now (no implicit shell); Scoop + CI-on-Windows shipped (m7 s1).
 - **Config:** YAML; canonical `triage.yaml`, with `triage.yml`, `.triage.yaml`, `.triage.yml` accepted; type-as-key
 checks; JSON Schema ships (§4).
 - **Composition:** `include` (files, in order) + `extends` (profiles) — distinct

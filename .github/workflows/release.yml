@@ -6,7 +6,7 @@
 # marketplace/channel updated while another is not:
 #   Phase 1 — goreleaser: build + validate all artifacts (no remote until green)
 #   Phase 2 — GitHub Release assets (inside goreleaser)
-#   Phase 3a — Homebrew tap commit (scripts/publish-formula.sh, after release URLs exist)
+#   Phase 3a — Homebrew tap + Scoop bucket commits (after release URLs exist)
 #   Phase 3b — floating tags vX.Y / vX (this workflow, last)
 #
 # See specs/releasing.md for the full maintainer guide.
@@ -59,6 +59,16 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
           scripts/publish-formula.sh "$VERSION" dist
+
+      - name: Publish Scoop manifest
+        if: ${{ !contains(github.ref, '-') }}
+        env:
+          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          scripts/publish-scoop.sh "$VERSION" dist
 
   promote-floating-tags:
     name: promote floating tags

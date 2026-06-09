@@ -126,9 +126,9 @@ from `lolay/triage-action` once the Developer Agreement is accepted.
 
 ### m7 — Forward-looking (deferred)
 
-- s1 — [exec] Native Windows packaging: build matrix already produces
-  `windows/{amd64,arm64}` as of m5; remaining work is CI-on-Windows + `scoop`
-  (the single Windows package-manager channel; `winget` / `chocolatey` deferred)
+- ~~s1 — [exec] Native Windows packaging: build matrix already produces
+  `windows/{amd64,arm64}` as of m5; CI-on-Windows + Scoop bucket
+  (`lolay/scoop-bucket`) shipped — single Windows channel; `winget` / `chocolatey` deferred~~ ✓
 - s1b — [exec] macOS sign + notarize: GoReleaser `notarize:` block + Apple
   secrets (Developer ID Application `.p12`, App Store Connect API key) for
   direct-download trust; not required for the Homebrew formula path

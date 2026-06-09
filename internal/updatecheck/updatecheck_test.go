@@ -29,12 +29,47 @@ func TestNotice_usesCache(t *testing.T) {
 		CurrentVersion: "0.1.0",
 		CacheDir:       dir,
 		Now:            func() time.Time { return now },
+		OS:             "darwin",
 		IsBrewInstall:  func() bool { return true },
 	})
 	require.NotNil(t, got)
 	assert.Equal(t, "0.2.0", got.Latest)
 	assert.Equal(t, "0.1.0", got.Current)
 	assert.Equal(t, "brew upgrade triage", got.Hint)
+}
+
+func TestNotice_windowsScoopHint(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
+	cachePath := filepath.Join(dir, "update-check.json")
+	require.NoError(t, os.WriteFile(cachePath, []byte(`{"latest":"v0.2.0","checked_at":"2026-06-07T11:00:00Z"}`), 0o644))
+
+	got := Notice(context.Background(), Options{
+		CurrentVersion: "0.1.0",
+		CacheDir:       dir,
+		Now:            func() time.Time { return now },
+		OS:             "windows",
+		IsScoopInstall: func() bool { return true },
+	})
+	require.NotNil(t, got)
+	assert.Equal(t, "scoop update triage", got.Hint)
+}
+
+func TestNotice_windowsScoopNotInstalledHint(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
+	cachePath := filepath.Join(dir, "update-check.json")
+	require.NoError(t, os.WriteFile(cachePath, []byte(`{"latest":"v0.2.0","checked_at":"2026-06-07T11:00:00Z"}`), 0o644))
+
+	got := Notice(context.Background(), Options{
+		CurrentVersion: "0.1.0",
+		CacheDir:       dir,
+		Now:            func() time.Time { return now },
+		OS:             "windows",
+		IsScoopInstall: func() bool { return false },
+	})
+	require.NotNil(t, got)
+	assert.Equal(t, "scoop install lolay/triage", got.Hint)
 }
 
 func TestNotice_fetchesLatest(t *testing.T) {

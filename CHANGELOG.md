@@ -7,6 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Scoop bucket manifest (`scripts/triage.json.tmpl`) and automated publish
+  (`scripts/publish-scoop.sh`) to `lolay/scoop-bucket` on release; install via
+  `scoop bucket add lolay https://github.com/lolay/scoop-bucket` and
+  `scoop install lolay/triage`.
+- `publish-scoop` Makefile target and release-workflow step (Phase 3a, after
+  Homebrew formula publish).
+- Windows-aware update banner: on Windows, suggests `scoop update triage` or
+  `scoop install lolay/triage` instead of the Homebrew hint.
+- `ci-windows` CI job on `windows-latest` (`go build` + `go test`).
+
 ### Changed
 - `triage.yaml` `release` profile: replaced `cosign` (no call site) with `mandoc`
   (lints hand-authored man pages before release); `mandoc` is `error` severity so

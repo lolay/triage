@@ -45,8 +45,8 @@ triage (profile: default)
   byte-identical at any `--jobs` (`-j 1` is fully sequential). Pin a check or
   group with `serial: true` for a shared scarce resource (lock, rate-limited
   auth, keychain).
-- **Cross-platform.** macOS, Linux, and WSL2 via Homebrew; native Windows
-  `.exe` ships on GitHub Releases (scoop/winget packaging in m7).
+- **Cross-platform.** macOS, Linux, and WSL2 via Homebrew; native Windows via
+  Scoop (`lolay/scoop-bucket`) or GitHub Release `.zip` assets.
 
 ## Quick start
 
@@ -54,9 +54,13 @@ triage (profile: default)
 # Released: install from the dedicated tap (not homebrew-core)
 brew install lolay/tap/triage
 
-# Or download a release tarball from GitHub Releases
+# Windows (Scoop)
+scoop bucket add lolay https://github.com/lolay/scoop-bucket
+scoop install lolay/triage
+
+# Or download a release tarball/zip from GitHub Releases
 # https://github.com/lolay/triage/releases
-# WSL2 uses the Linux formula above; native Windows: grab triage_*.zip from Releases
+# WSL2 uses the Linux formula above
 
 # Pre-release / hacking: build from source (make is the source of truth)
 git clone https://github.com/lolay/triage.git && cd triage

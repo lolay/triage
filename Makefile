@@ -18,7 +18,7 @@ SHELL := bash
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot man tag publish-formula release
+.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot man tag publish-formula publish-scoop release
 
 # Remote-mutating targets refuse to run without CONFIRM_* (CI sets inline).
 define confirm
@@ -115,6 +115,11 @@ publish-formula: ## Render and push Formula/triage.rb from dist/ (VERSION=x.y.z;
 	$(call confirm,PUBLISH_FORMULA)
 	@test -n "$(VERSION)" || { echo "VERSION=x.y.z required" >&2; exit 1; }
 	scripts/publish-formula.sh "$(VERSION)" dist
+
+publish-scoop: ## Render and push bucket/triage.json from dist/ (VERSION=x.y.z; CONFIRM_PUBLISH_SCOOP=1)
+	$(call confirm,PUBLISH_SCOOP)
+	@test -n "$(VERSION)" || { echo "VERSION=x.y.z required" >&2; exit 1; }
+	scripts/publish-scoop.sh "$(VERSION)" dist
 
 ##@ Danger
 

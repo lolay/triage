@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -37,9 +38,11 @@ type Options struct {
 	HTTPClient     *http.Client     // default: 300ms timeout client
 	Now            func() time.Time // default: time.Now
 	IsBrewInstall  func() bool      // default: brew list triage
+	IsScoopInstall func() bool      // default: scoop which triage
 	CurrentVersion string
 	CacheDir       string // default: os.UserCacheDir()/triage
 	LatestURL      string // default: githubLatestURL (override in tests)
+	OS             string // default: runtime.GOOS
 }
 
 // Notice returns an update Result when a newer release exists, or nil when the
@@ -80,13 +83,29 @@ func compare(current, latest *semver.Version, opts Options) *Result {
 	if !latest.GreaterThan(current) {
 		return nil
 	}
-	hint := "brew install lolay/tap/triage"
-	isBrew := brewInstalled
-	if opts.IsBrewInstall != nil {
-		isBrew = opts.IsBrewInstall
+	osName := opts.OS
+	if osName == "" {
+		osName = runtime.GOOS
 	}
-	if isBrew() {
-		hint = "brew upgrade triage"
+	var hint string
+	if osName == "windows" {
+		hint = "scoop install lolay/triage"
+		isScoop := scoopInstalled
+		if opts.IsScoopInstall != nil {
+			isScoop = opts.IsScoopInstall
+		}
+		if isScoop() {
+			hint = "scoop update triage"
+		}
+	} else {
+		hint = "brew install lolay/tap/triage"
+		isBrew := brewInstalled
+		if opts.IsBrewInstall != nil {
+			isBrew = opts.IsBrewInstall
+		}
+		if isBrew() {
+			hint = "brew upgrade triage"
+		}
 	}
 	return &Result{
 		Current: current.String(),
@@ -230,6 +249,14 @@ func brewInstalled() bool {
 		return false
 	}
 	cmd := exec.Command("brew", "list", "triage")
+	return cmd.Run() == nil
+}
+
+func scoopInstalled() bool {
+	if _, err := exec.LookPath("scoop"); err != nil {
+		return false
+	}
+	cmd := exec.Command("scoop", "which", "triage")
 	return cmd.Run() == nil
 }
 
