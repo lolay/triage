@@ -32,6 +32,13 @@ path to
 .Xr triage 1 .
 .Sh PROFILES
 .Bl -tag -width default -compact
+.It Sy version
+Optional format version integer.
+Only
+.Sy 1
+is supported; absent defaults to
+.Sy 1 .
+An unsupported value is a config error (exit 3).
 .It Sy default
 Profile run when
 .Fl -profile
@@ -39,6 +46,7 @@ is omitted.
 May be omitted (treated as empty).
 .It Ar name
 Any other top-level key (except
+.Sy version ,
 .Sy include
 and
 .Sy vars )

@@ -17,6 +17,7 @@ the root.
 
 ```yaml
 # Single-profile repo
+version: 1
 default:
   - tool: git
     hint: https://git-scm.com
@@ -43,6 +44,7 @@ release:
 
 | Key | Role |
 | --- | --- |
+| `version` | Optional integer. Only `1` is supported; absent means `1`. Future format changes will bump this. |
 | `include` | List of YAML files to merge (processed first, in order) |
 | `vars` | Mapping of reusable string values for `{{ name }}` templates |
 | Any other key | A **profile name** (`default`, `release`, `ci`, …) |

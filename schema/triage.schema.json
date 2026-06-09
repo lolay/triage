@@ -2,9 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/lolay/triage/schema/triage.schema.json",
   "title": "triage.yaml",
-  "description": "Configuration for the triage environment doctor (spec §4–§5). Root is always a mapping: the reserved 'include' key composes other files, every other key is a profile.",
+  "description": "Configuration for the triage environment doctor (spec §4–§5). Root is always a mapping: the reserved 'version', 'include', and 'vars' keys are metadata; every other key is a profile.",
   "type": "object",
   "properties": {
+    "version": {
+      "title": "version",
+      "description": "Config format version. Only 1 is supported. Omit to default to 1.",
+      "type": "integer",
+      "enum": [1]
+    },
     "include": {
       "title": "include",
       "description": "Files to compose, processed in order. Paths resolve relative to this file's directory. Collisions (same profile + check) are flagged at load time; the later definition wins.",

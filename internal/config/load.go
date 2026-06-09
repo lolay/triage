@@ -63,7 +63,11 @@ func load(path string) (*Config, error) {
 		resolved[name] = p
 	}
 
-	return &Config{Path: abs, Profiles: resolved, Vars: l.vars, Warnings: l.warnings}, nil
+	version := l.version
+	if version == 0 {
+		version = 1
+	}
+	return &Config{Path: abs, Version: version, Profiles: resolved, Vars: l.vars, Warnings: l.warnings}, nil
 }
 
 // compositeProfile is a profile after include-merge but before extends/add
@@ -77,6 +81,7 @@ type loader struct {
 	composite map[string]*compositeProfile
 	memo      map[string]Profile
 	vars      map[string]string
+	version   int
 	warnings  []string
 }
 
@@ -140,6 +145,17 @@ func (l *loader) loadFile(absPath string, visited map[string]bool) error {
 			if err := yaml.NodeToValue(mv.Value, &fileVars); err != nil {
 				return fmt.Errorf("%s: vars: %w", absPath, err)
 			}
+			continue
+		}
+		if key == "version" {
+			var v int
+			if err := yaml.NodeToValue(mv.Value, &v); err != nil {
+				return fmt.Errorf("%s: version: %w", absPath, err)
+			}
+			if v != 1 {
+				return fmt.Errorf("%s: unsupported config version %d (only version: 1 is supported)", absPath, v)
+			}
+			l.version = v
 			continue
 		}
 		if reservedTypeKeys[key] {

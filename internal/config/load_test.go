@@ -29,6 +29,72 @@ func ids(p Profile) []string {
 
 func join(ss []string) string { return strings.Join(ss, " ") }
 
+// ── config format version ─────────────────────────────────────────────────────
+
+func TestLoad_VersionAbsentDefaultsToOne(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: git
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	assert.Equal(t, 1, cfg.Version, "Version")
+}
+
+func TestLoad_VersionExplicitOne(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `version: 1
+default:
+  - tool: git
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	assert.Equal(t, 1, cfg.Version, "Version")
+}
+
+func TestLoad_VersionUnsupported(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `version: 2
+default:
+  - tool: git
+`)
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	require.Error(t, err, "load")
+	assert.ErrorContains(t, err, "unsupported config version 2")
+}
+
+func TestLoad_VersionInIncludedFile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "base.yaml", `version: 1
+default:
+  - tool: git
+`)
+	writeFile(t, dir, "triage.yaml", `include:
+  - base.yaml
+default:
+  - tool: go
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	assert.Equal(t, 1, cfg.Version, "Version")
+}
+
+func TestLoad_VersionUnsupportedInIncludedFile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "base.yaml", `version: 2
+default:
+  - tool: git
+`)
+	writeFile(t, dir, "triage.yaml", `include:
+  - base.yaml
+default:
+  - tool: go
+`)
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	require.Error(t, err, "load")
+	assert.ErrorContains(t, err, "unsupported config version 2")
+}
+
 // ── include merge ───────────────────────────────────────────────────────────
 
 func TestLoad_IncludeMerge(t *testing.T) {

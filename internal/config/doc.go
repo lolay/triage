@@ -7,6 +7,7 @@
 //
 // Loading (m2 s1) parses the full triage.yaml schema with github.com/goccy/go-yaml
 // and produces a composite, inheritance-resolved Config:
+//   - version: optional format version (default 1); unsupported values are a load error;
 //   - type-as-key checks: each Check carries a single reserved type key
 //     (tool/env/path/one_of/command/delegate/group) plus the common and
 //     type-specific fields (spec §5);

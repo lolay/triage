@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `version: 1` root field in `triage.yaml` (optional; absent defaults to 1).
+  Unsupported versions are a config error (exit 3).
 - `--init` `[config]` writes a platform-appropriate starter config in the
   current directory (default `triage.yaml`; optional path overrides the
   filename; POSIX vs Windows templates); errors if the target already exists.
