@@ -40,7 +40,7 @@ func runInit(configArg string, stdout, stderr io.Writer, exitCode *int) error {
 	}
 
 	content := initTemplate(engine.CurrentPlatform())
-	if err := os.WriteFile(targetPath, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(targetPath, []byte(content), 0o600); err != nil {
 		*exitCode = ExitUsageError
 		_, _ = fmt.Fprintf(stderr, "triage: write %s: %v\n", target, err)
 		return nil

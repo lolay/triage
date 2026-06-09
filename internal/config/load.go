@@ -81,8 +81,8 @@ type loader struct {
 	composite map[string]*compositeProfile
 	memo      map[string]Profile
 	vars      map[string]string
-	version   int
 	warnings  []string
+	version   int
 }
 
 func (l *loader) warnf(format string, args ...any) {

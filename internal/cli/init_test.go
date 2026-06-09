@@ -37,11 +37,11 @@ func TestRunInit(t *testing.T) {
 		configArg  string
 		goos       string
 		existing   string
-		wantExit   int
 		wantStdout string
 		wantErr    string
 		wantFile   string
 		wantMarker string
+		wantExit   int
 	}{
 		{
 			name:       "default",
