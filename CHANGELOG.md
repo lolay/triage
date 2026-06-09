@@ -8,6 +8,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `--init` `[config]` writes a platform-appropriate starter config in the
+  current directory (default `triage.yaml`; optional path overrides the
+  filename; POSIX vs Windows templates); errors if the target already exists.
 - Scoop bucket manifest (`scripts/triage.json.tmpl`) and automated publish
   (`scripts/publish-scoop.sh`) to `lolay/scoop-bucket` on release; install via
   `scoop bucket add lolay https://github.com/lolay/scoop-bucket` and

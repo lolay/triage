@@ -20,6 +20,7 @@
 .Op Fl -command-log Op Ar path
 .Op Fl -verbose
 .Op Fl -no-update-check
+.Op Fl -init Op Ar config
 .Nm
 .Op Fl -version
 .Nm
@@ -150,6 +151,14 @@ when flag given without value); truncated each run.
 On failure, replay command output to stderr.
 .It Fl -no-update-check
 Skip the cached GitHub release staleness banner.
+.It Fl -init Op Ar config
+Write a platform-appropriate starter config in the current directory.
+Default target is
+.Pa triage.yaml ;
+an optional
+.Ar config
+argument overrides the filename.
+Errors if the target already exists (or any discovery-order config when the default target is used).
 .It Fl -version
 Print build version and exit.
 .It Fl -help

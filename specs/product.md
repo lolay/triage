@@ -465,6 +465,7 @@ is the important part.
 | `--command-log` `[path]`                 | Stream each probe's output to a log file (default `.triage/commands.log`); **truncated each run**; off by default |
 | `--verbose`                              | On check failure, replay command output (or log excerpt) to **stderr**                  |
 | `--no-update-check`                      | Skip cached GitHub release staleness banner (§7.2)                                      |
+| `--init` `[config]`                      | Write a platform-appropriate starter config in the current directory (default `triage.yaml`; optional path overrides the filename); errors if the target or any discovery-order config already exists (default only) |
 
 **Output filtering (v1):** `--quiet` only. **`--only`** (filter by severity or
 group name) is **deferred** — grammar and delegate-tree behavior need a pass once

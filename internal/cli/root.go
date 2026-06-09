@@ -96,6 +96,7 @@ func bindFlags(cmd *cobra.Command, f *Flags) {
 	fl.BoolVar(&f.NoColor, "no-color", false, "Disable ANSI color output")
 	fl.BoolVar(&f.Verbose, "verbose", false, "Replay probe subprocess output for failures on stderr")
 	fl.BoolVar(&f.NoUpdateCheck, "no-update-check", false, "Disable the update-availability banner")
+	fl.BoolVar(&f.Init, "init", false, "Write a starter config in the current directory (default triage.yaml)")
 	fl.IntVarP(&f.Jobs, "jobs", "j", 0, "Max concurrent checks (bounded worker pool; default ≈ NumCPU, capped at 8). 1 = fully sequential")
 
 	// --command-log has an optional value: present with no path uses the
@@ -115,6 +116,14 @@ func run(cmd *cobra.Command, args []string, f *Flags, stdout, stderr io.Writer, 
 		*exitCode = ExitUsageError
 		_, _ = fmt.Fprintf(stderr, "triage: --jobs must be >= 1 (got %d)\n", f.Jobs)
 		return nil
+	}
+
+	if f.Init {
+		configArg := ""
+		if len(args) > 0 {
+			configArg = args[0]
+		}
+		return runInit(configArg, stdout, stderr, exitCode)
 	}
 
 	// Resolve the optional [config] positional argument.

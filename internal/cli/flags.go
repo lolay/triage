@@ -13,4 +13,5 @@ type Flags struct {
 	NoColor       bool
 	Verbose       bool
 	NoUpdateCheck bool
+	Init          bool
 }
