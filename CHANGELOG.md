@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- gofmt drift in `internal/cli/init_test.go` that caused the Linux lint gate
+  to fail.
+- Windows CI: added `.bat` companion stubs for every POSIX fake-binary in
+  `testdata/*/bin/` so `exec.LookPath` resolves them on Windows without a
+  `.exe`/`.cmd` extension.
+
 ### Added
 - `version: 1` root field in `triage.yaml` (optional; absent defaults to 1).
   Unsupported versions are a config error (exit 3).

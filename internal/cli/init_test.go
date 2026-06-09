@@ -86,12 +86,12 @@ func TestRunInit(t *testing.T) {
 			wantErr:  "triage: triage.yml already exists\n",
 		},
 		{
-			name:       "already-exists-custom",
-			configArg:  "my-triage.yml",
-			goos:       "linux",
-			existing:   "my-triage.yml",
-			wantExit:   ExitUsageError,
-			wantErr:    "triage: my-triage.yml already exists\n",
+			name:      "already-exists-custom",
+			configArg: "my-triage.yml",
+			goos:      "linux",
+			existing:  "my-triage.yml",
+			wantExit:  ExitUsageError,
+			wantErr:   "triage: my-triage.yml already exists\n",
 		},
 	}
 
