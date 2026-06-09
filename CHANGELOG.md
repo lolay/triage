@@ -26,6 +26,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `major` in the GitHub Actions UI, and the `cut-release` job computes the next
   version, moves `[Unreleased]` in `CHANGELOG.md`, commits, and pushes the tag
   (using `RELEASE_TAG_PAT`) to trigger the full publish pipeline.
+- `.gitattributes`: `* text=auto` + `eol=lf` for golden test fixtures so Windows
+  runners no longer corrupt byte-exact comparisons via git autocrlf.
+
+### Fixed
+- `TestGolden` failures on `windows-latest`: golden fixture files were checked
+  out with `\r\n` endings by git autocrlf, mismatching the CLI's `\n` output.
+  `.gitattributes` now enforces `eol=lf` for all files under
+  `internal/cli/testdata/`.
 
 ### Changed
 - `triage.yaml` `release` profile: replaced `cosign` (no call site) with `mandoc`
