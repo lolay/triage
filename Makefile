@@ -55,9 +55,9 @@ GH_LIMIT ?= 50
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*?##/ {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2} /^##@/ {printf "\n\033[1m%s\033[0m\n", substr($$0,5)}' $(MAKEFILE_LIST)
 
-init: ## Download Go module dependencies and install golangci-lint
+init: ## Download Go module dependencies (INSTALL_PACKAGES=1 also installs golangci-lint)
 	go mod download
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+	@if [ "$(INSTALL_PACKAGES)" = "1" ] && ! command -v golangci-lint >/dev/null 2>&1; then \
 	  echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
 	  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh \
 	    | sh -s -- -b "$$(go env GOPATH)/bin" $(GOLANGCI_LINT_VERSION); \
