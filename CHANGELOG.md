@@ -15,6 +15,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   fast), OS/arch + checksum asset mapping, exit-code forwarding (no `fail-on` in
   v1), coordinated semver/floating tags (`vX.Y` + `vX`), and the finalized
   `action.yml` / `install.sh` / `run.sh` shapes.
+- GitHub Actions CI dogfood job using `lolay/triage-action@v0` (`.github/workflows/ci.yml`).
+- `ci` profile in `triage.yaml` (extends `default`, adds `gh` for CI workflows).
+- README **CI / GitHub Actions** section with `lolay/triage-action@v0.3` example.
+
 
 ### Changed
 - `specs/product.md` §3 and `specs/milestones.md` m6 cross-link the new

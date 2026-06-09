@@ -31,6 +31,9 @@ force-push last.
 
 **Generalizes to m6:** the GitHub Action Marketplace publish on
 `lolay/triage-action` runs only after the CLI release is fully green.
+**Coordinated semver:** `triage-action` tracks the CLI — cut the action tag
+(`vX.Y.Z`, floating `vX.Y` / `vX`) only after `lolay/triage` release CI is green,
+since the action installs the matching CLI release asset.
 
 ## Versioning
 

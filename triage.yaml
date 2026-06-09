@@ -34,3 +34,10 @@ release:
       group: Release
       severity: warn
       hint: brew install cosign
+ci:
+  extends: [default]
+  add:
+    - tool: gh
+      group: CI
+      hint: https://cli.github.com
+

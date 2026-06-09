@@ -61,3 +61,15 @@ jobs:
         with:
           version: "~> v2"
           args: check
+
+  action-dogfood:
+    name: triage-action dogfood
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run released triage-action
+        uses: lolay/triage-action@v0
+        with:
+          profile: ci
+          json: true

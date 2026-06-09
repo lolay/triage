@@ -141,6 +141,22 @@ stream probe output to a file (overwritten each run; blocks are written in list
 order so the file is identical regardless of `--jobs`), or `--verbose` to replay
 failures on stderr.
 
+
+## CI / GitHub Actions
+
+Use the composite action in your workflows to run `triage` with a profile from
+your repo (or a checked-out config):
+
+```yaml
+- uses: lolay/triage-action@v0.3
+  with:
+    profile: ci
+    json: true
+```
+
+Pin to a major (`@v0`), minor (`@v0.3`), or exact tag as your policy requires.
+Contract and inputs: [`specs/action.md`](./specs/action.md).
+
 ## Releasing
 
 Maintainers: all artifacts build and validate first; **remote and marketplace
