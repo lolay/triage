@@ -18,7 +18,8 @@ SHELL := bash
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot man tag publish-formula publish-scoop release
+.PHONY: help init build lint format test vuln ci pre-commit doctor clean snapshot man tag publish-formula publish-scoop release \
+        gh-runs-list gh-runs-watch
 
 # Remote-mutating targets refuse to run without CONFIRM_* (CI sets inline).
 define confirm
@@ -42,6 +43,9 @@ LDFLAGS := -s -w \
 
 # MODE selects the dogfood profile for `make doctor` (default | release).
 MODE ?= default
+
+# Maximum recent runs to fetch for gh-runs-list / gh-runs-watch.
+GH_LIMIT ?= 50
 
 ##@ Develop
 
@@ -91,6 +95,24 @@ doctor: build ## Dogfood: run triage against this repo's triage.yaml. MODE=defau
 
 clean: ## Remove build artifacts (bin/, dist/)
 	rm -rf $(BIN_DIR) dist
+
+##@ GitHub
+
+gh-runs-list: ## List this repo's in-flight Actions runs (status != completed)
+	@out=$$(gh run list --limit $(GH_LIMIT) \
+	  --json status,workflowName,headBranch,event,url \
+	  --jq '.[] | select(.status != "completed") | "  \(.status)\t\(.workflowName)\t\(.headBranch)\t\(.event)\t\(.url)"' 2>&1) \
+	  || { printf '  \033[33m⚠\033[0m gh run list failed (auth? run `gh auth login`)\n'; exit 0; }; \
+	if [ -z "$$out" ]; then printf '  \033[2mno active runs\033[0m\n'; \
+	else printf '%s\n' "$$out" | column -t -s "$$(printf '\t')"; fi
+
+gh-runs-watch: ## Watch this repo's in-flight Actions runs until each completes
+	@ids=$$(gh run list --limit $(GH_LIMIT) --json status,databaseId \
+	  --jq '.[] | select(.status != "completed") | .databaseId' 2>/dev/null); \
+	if [ -z "$$ids" ]; then printf '  \033[2mno active runs\033[0m\n'; exit 0; fi; \
+	for id in $$ids; do \
+	  gh run watch "$$id" --compact || printf '  \033[33m⚠\033[0m watch failed for run %s\n' "$$id"; \
+	done
 
 ##@ Release
 
