@@ -20,9 +20,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   silently skipping it, closing the gap between the local gate and CI.
 
 ### Changed
-- `make init INSTALL_PACKAGES=1` installs `golangci-lint` at the pinned
-  version (`GOLANGCI_LINT_VERSION`, currently `v2.12.2`) when not already
-  present; bare `make init` only downloads Go module dependencies.
+- `make init INSTALL_PACKAGES=1` installs the latest `golangci-lint` when
+  not already present; bare `make init` only downloads Go module dependencies.
 - `golangci-lint` severity in `triage.yaml` promoted from `warn` to required;
   `make doctor` now fails if it is not installed.
 

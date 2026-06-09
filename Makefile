@@ -58,9 +58,9 @@ help: ## Show this help
 init: ## Download Go module dependencies (INSTALL_PACKAGES=1 also installs golangci-lint)
 	go mod download
 	@if [ "$(INSTALL_PACKAGES)" = "1" ] && ! command -v golangci-lint >/dev/null 2>&1; then \
-	  echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
-	  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh \
-	    | sh -s -- -b "$$(go env GOPATH)/bin" $(GOLANGCI_LINT_VERSION); \
+	  echo "Installing golangci-lint (latest)..."; \
+	  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+	    | sh -s -- -b "$$(go env GOPATH)/bin"; \
 	fi
 
 build: ## Compile the triage binary into bin/ (stamps build metadata)
