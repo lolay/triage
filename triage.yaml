@@ -30,10 +30,9 @@ release:
     - tool: goreleaser
       group: Release
       hint: brew install goreleaser
-    - tool: cosign
+    - tool: mandoc
       group: Release
-      severity: warn
-      hint: brew install cosign
+      hint: brew install mandoc
 ci:
   extends: [default]
   add:

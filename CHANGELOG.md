@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+- `triage.yaml` `release` profile: replaced `cosign` (no call site) with `mandoc`
+  (lints hand-authored man pages before release); `mandoc` is `error` severity so
+  `make doctor MODE=release` blocks on a missing install rather than silently
+  shipping unvalidated man pages.
+
+---
+
 ## [v0.3.0] — 2026-06-08
 
 ### Added
