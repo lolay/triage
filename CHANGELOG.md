@@ -13,6 +13,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Windows CI: added `.bat` companion stubs for every POSIX fake-binary in
   `testdata/*/bin/` so `exec.LookPath` resolves them on Windows without a
   `.exe`/`.cmd` extension.
+- `golangci-lint` fieldalignment warnings in `Config`, `loader`, and the
+  `TestRunInit` anonymous struct; `gosec G306` permission on `os.WriteFile`
+  in `runInit` (`0o644` → `0o600`).
+- `make lint` now fails hard when `golangci-lint` is absent instead of
+  silently skipping it, closing the gap between the local gate and CI.
+
+### Changed
+- `make init` installs `golangci-lint` at the pinned version
+  (`GOLANGCI_LINT_VERSION`, currently `v2.12.2`) when not already present,
+  so the tool is never missing after a normal dev setup.
+- `golangci-lint` severity in `triage.yaml` promoted from `warn` to required;
+  `make doctor` now fails if it is not installed.
 
 ### Added
 - `version: 1` root field in `triage.yaml` (optional; absent defaults to 1).

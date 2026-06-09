@@ -44,6 +44,9 @@ LDFLAGS := -s -w \
 # MODE selects the dogfood profile for `make doctor` (default | release).
 MODE ?= default
 
+# Pinned golangci-lint version — must match the Install step in ci.yml.
+GOLANGCI_LINT_VERSION ?= v2.12.2
+
 # Maximum recent runs to fetch for gh-runs-list / gh-runs-watch.
 GH_LIMIT ?= 50
 
@@ -52,25 +55,28 @@ GH_LIMIT ?= 50
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*?##/ {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2} /^##@/ {printf "\n\033[1m%s\033[0m\n", substr($$0,5)}' $(MAKEFILE_LIST)
 
-init: ## Download Go module dependencies
+init: ## Download Go module dependencies and install golangci-lint
 	go mod download
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+	  echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
+	  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_LINT_VERSION)/install.sh \
+	    | sh -s -- -b "$$(go env GOPATH)/bin" $(GOLANGCI_LINT_VERSION); \
+	fi
 
 build: ## Compile the triage binary into bin/ (stamps build metadata)
 	go build -ldflags '$(LDFLAGS)' -o $(BIN_DIR)/$(BINARY) .
 
-lint: ## Static checks: gofmt drift + go vet + golangci-lint (if installed)
+lint: ## Static checks: gofmt drift + go vet + golangci-lint (required; run make init)
 	@set -o pipefail; \
 	drift="$$(gofmt -l .)"; \
 	if [ -n "$$drift" ]; then \
 	  echo "gofmt drift detected — run 'make format':"; echo "$$drift"; exit 1; \
 	fi
 	go vet ./...
-	@set -o pipefail; \
-	if command -v golangci-lint >/dev/null 2>&1; then \
-	  golangci-lint run; \
-	else \
-	  echo "golangci-lint not found — skipping (install: https://golangci-lint.run; CI runs it)"; \
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+	  echo "golangci-lint not found — run 'make init' to install" >&2; exit 1; \
 	fi
+	golangci-lint run
 
 format: ## Auto-fix formatting (gofmt -w .)
 	gofmt -w .

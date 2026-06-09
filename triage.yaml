@@ -23,8 +23,7 @@ default:
   - group: Lint
     items:
       - tool: golangci-lint
-        severity: warn
-        hint: brew install golangci-lint
+        hint: run 'make init' to install the pinned version
 
 release:
   extends: [default]
