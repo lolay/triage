@@ -289,3 +289,41 @@ func TestRunner_OneOf_PlatformFilteredAlternative(t *testing.T) {
 	require.Len(t, results, 1, "want pass via env alternative: %+v", results)
 	assert.True(t, results[0].Pass, "want pass via env alternative: %+v", results)
 }
+
+func TestExpandTilde(t *testing.T) {
+	t.Parallel()
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home dir")
+	}
+
+	assert.Equal(t, home, expandTilde("~"))
+	assert.Equal(t, filepath.Join(home, "sub/path"), expandTilde("~/sub/path"))
+	assert.Equal(t, "/absolute/path", expandTilde("/absolute/path"))
+}
+
+func TestOneOfLabel_nonToolAlternatives(t *testing.T) {
+	t.Parallel()
+
+	got := oneOfLabel([]config.Check{
+		{Type: config.TypeEnv, Value: "val1"},
+		{Type: config.TypeEnv, Value: "val2"},
+	})
+	assert.Equal(t, "env: val1 or env: val2", got)
+}
+
+func TestResolveSeverity_info(t *testing.T) {
+	t.Parallel()
+
+	got := resolveSeverity(config.Check{Severity: "info"})
+	assert.Equal(t, SeverityInfo, got)
+}
+
+func TestCurrentPlatform_override(t *testing.T) {
+	t.Setenv("TRIAGE_TEST_GOOS", "linux")
+	assert.Equal(t, "linux", CurrentPlatform())
+
+	t.Setenv("TRIAGE_TEST_GOOS", "windows")
+	assert.Equal(t, "windows", CurrentPlatform())
+}

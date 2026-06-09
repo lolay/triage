@@ -253,6 +253,45 @@ func TestJobsFlagValidation(t *testing.T) {
 	}
 }
 
+func TestExecuteWith_badVar(t *testing.T) {
+	fixture := filepath.Join("testdata", "empty-config")
+	var stdout, stderr bytes.Buffer
+	got := cli.ExecuteWith([]string{fixture, "--var", "NOEQUALS"}, &stdout, &stderr)
+	assert.Equal(t, cli.ExitUsageError, got)
+	assert.Contains(t, stderr.String(), "triage:")
+}
+
+func TestExecuteWith_validVar(t *testing.T) {
+	fixture := filepath.Join("testdata", "vars")
+	var stdout, stderr bytes.Buffer
+	got := cli.ExecuteWith([]string{fixture, "--no-color", "--var", "echo_msg=cli-override"}, &stdout, &stderr)
+	assert.Equal(t, cli.ExitFail, got) // unknown {{ typo }} check still fails
+	assert.Contains(t, stdout.String(), "cli-override")
+}
+
+func TestExecuteWith_verbose(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "triage.yaml")
+	require.NoError(t, os.WriteFile(cfg, []byte(`default:
+  - command: 'printf verbose-output'
+    label: verbose probe
+    matches: 'no-match'
+`), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	got := cli.ExecuteWith([]string{dir, "--no-color", "--verbose"}, &stdout, &stderr)
+	assert.Equal(t, cli.ExitFail, got)
+	assert.Contains(t, stderr.String(), "--- verbose probe ---")
+	assert.Contains(t, stderr.String(), "verbose-output")
+}
+
+func TestExecuteWith_unknownFlag(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	got := cli.ExecuteWith([]string{"--no-such-flag"}, &stdout, &stderr)
+	assert.Equal(t, cli.ExitUsageError, got)
+	assert.Contains(t, stderr.String(), "triage:")
+}
+
 // lineDiff returns a line-by-line diff of got vs want for readable test failures.
 func lineDiff(got, want string) string {
 	gotLines := strings.Split(got, "\n")

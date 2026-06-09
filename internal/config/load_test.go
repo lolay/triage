@@ -469,3 +469,32 @@ default: []
 	assert.NotContains(t, cfg.Vars, "profile", "profile should not be in merged vars")
 	assert.Equal(t, "fine", cfg.Vars["ok"], "ok var missing: %#v", cfg.Vars)
 }
+
+func TestLoad_ProfileScalarRejected(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default: 1
+`)
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	require.Error(t, err, "load")
+	assert.ErrorContains(t, err, "must be a list of checks")
+}
+
+func TestLoad_OneOfScalarRejected(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default:
+  - one_of: pnpm
+`)
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	require.Error(t, err, "load")
+}
+
+func TestLoad_OneOfInvalidAlternativeRejected(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default:
+  - one_of:
+      - foo: bar
+`)
+	_, err := load(filepath.Join(dir, "triage.yaml"))
+	require.Error(t, err, "load")
+	assert.ErrorContains(t, err, "no type key")
+}
