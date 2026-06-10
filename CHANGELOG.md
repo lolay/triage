@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [0.1.0] - 2026-06-10
 
 ### Fixed
 - Removed `version: 1` from `triage.yaml`; the released v0.3.0 binary does
@@ -109,7 +109,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased] — m5: release & distribution pipeline
+## [0.1.0] - 2026-06-10 — m5: release & distribution pipeline
 
 _2026-06-07 · commit `afddce6`_
 
@@ -150,7 +150,7 @@ _2026-06-07 · commit `afddce6`_
 
 ---
 
-## [Unreleased] — Go standards conformance refactor
+## [0.1.0] - 2026-06-10 — Go standards conformance refactor
 
 _2026-06-06 – 2026-06-07 · commits `c3aaf28`…`88d5770`_
 
