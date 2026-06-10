@@ -50,9 +50,13 @@ jobs:
       # Use RELEASE_TAG_PAT so the tag push below re-triggers this workflow on
       # the tag ref. GITHUB_TOKEN-pushed tags do not trigger push events (GitHub
       # prevents the recursion), but a PAT does — same pattern as lolay/nowline.
+      # fetch-tags: true is required; fetch-depth: 0 alone does not guarantee
+      # tags are fetched in actions/checkout v4+, causing git describe to fall
+      # back to v0.0.0 and compute the wrong next version.
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
           token: ${{ secrets.RELEASE_TAG_PAT }}
 
       - name: Compute next version
