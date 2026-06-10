@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [0.1.0] - 2026-06-10
 
 ### Fixed
 - Removed `version: 1` from `triage.yaml`; the released v0.3.0 binary does
