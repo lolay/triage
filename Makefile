@@ -53,7 +53,7 @@ GH_LIMIT ?= 50
 ##@ Develop
 
 help: ## Show this help
-	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*?##/ {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2} /^##@/ {printf "\n\033[1m%s\033[0m\n", substr($$0,5)}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_.-]+:.*?##/ {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2} /^##@/ {printf "\n\033[1m%s\033[0m\n", substr($$0,5)}' $(MAKEFILE_LIST)
 
 init: ## Download Go module dependencies (INSTALL_PACKAGES=1 also installs golangci-lint)
 	go mod download
@@ -130,7 +130,7 @@ gh-runs-status: ## Show pass/fail of the last completed run per workflow
 	esc=$$(printf '\033'); \
 	printf '%s\n' "$$out" | while IFS=$$'\t' read -r conclusion name branch url age_secs; do \
 	  if [ "$$conclusion" = "success" ]; then mark="ok"; \
-	  elif [ "$$conclusion" = "skipped" ]; then mark="skip"; \
+	  elif [ "$$conclusion" = "skipped" ] || [ "$$conclusion" = "neutral" ]; then mark="skip"; \
 	  else mark="fail"; fi; \
 	  if [ "$$age_secs" -lt 60 ]; then age="$${age_secs}s"; \
 	  elif [ "$$age_secs" -lt 3600 ]; then age="$$((age_secs / 60))m"; \
@@ -162,6 +162,8 @@ tag: ## Create and push git tag VERSION=x.y.z (triggers release workflow)
 	git tag "v$(VERSION)"
 	git push origin "v$(VERSION)"
 
+##@ Danger
+
 publish-formula: ## Render and push Formula/triage.rb from dist/ (VERSION=x.y.z; CONFIRM_PUBLISH_FORMULA=1)
 	$(call confirm,PUBLISH_FORMULA)
 	@test -n "$(VERSION)" || { echo "VERSION=x.y.z required" >&2; exit 1; }
@@ -171,8 +173,6 @@ publish-scoop: ## Render and push bucket/triage.json from dist/ (VERSION=x.y.z; 
 	$(call confirm,PUBLISH_SCOOP)
 	@test -n "$(VERSION)" || { echo "VERSION=x.y.z required" >&2; exit 1; }
 	scripts/publish-scoop.sh "$(VERSION)" dist
-
-##@ Danger
 
 release: ## Publish release for current tag via goreleaser (tag must exist)
 	$(call confirm,RELEASE)

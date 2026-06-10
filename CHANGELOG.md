@@ -23,6 +23,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   silently skipping it, closing the gap between the local gate and CI.
 
 ### Changed
+- `make gh-runs-status` now renders `neutral` run conclusions as dim (not
+  failures), matching the existing `skipped` handling.
+- `make publish-formula` and `make publish-scoop` moved under the `Danger`
+  help section alongside `release` (behavior unchanged; both still require
+  their `CONFIRM_*` variables).
+- `make help` recognizes target names containing digits and dots.
 - `make init INSTALL_PACKAGES=1` installs the latest `golangci-lint` when
   not already present; bare `make init` only downloads Go module dependencies.
 - `golangci-lint` severity in `triage.yaml` promoted from `warn` to required;
@@ -34,6 +40,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   triage so the `ci` profile check passes.
 
 ### Added
+- `Makefile.md` companion reference documenting every make target, the
+  CI-to-target map, and the release danger guards.
 - `version: 1` root field in `triage.yaml` (optional; absent defaults to 1).
   Unsupported versions are a config error (exit 3).
 - `--init` `[config]` writes a platform-appropriate starter config in the
