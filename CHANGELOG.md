@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.4.0] - 2026-06-10
 
+### Changed
+- README quick start now includes `brew trust lolay/tap` before
+  `brew install lolay/tap/triage`, ahead of Homebrew requiring explicit
+  trust for non-official taps.
+
 ### Fixed
 - Removed `version: 1` from `triage.yaml`; the released v0.3.0 binary does
   not yet recognise `version` as a reserved top-level key and rejects it as

@@ -52,6 +52,7 @@ triage (profile: default)
 
 ```sh
 # Released: install from the dedicated tap (not homebrew-core)
+brew trust lolay/tap
 brew install lolay/tap/triage
 
 # Windows (Scoop)
