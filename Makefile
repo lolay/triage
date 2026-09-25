@@ -45,7 +45,7 @@ LDFLAGS := -s -w \
 MODE ?= default
 
 # Pinned golangci-lint version — must match the Install step in ci.yml.
-GOLANGCI_LINT_VERSION ?= v2.12.2
+GOLANGCI_LINT_VERSION ?= v2.14.0
 
 # Maximum recent runs to fetch for gh-runs-list / gh-runs-watch.
 GH_LIMIT ?= 50

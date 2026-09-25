@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+- Go toolchain pin (`.go-version`) bumped from 1.26.4 to 1.27.1; building
+  from source and `make doctor` now expect Go >= 1.27.1. The `go.mod`
+  language floor stays at 1.26.
+- Dependencies updated: `golang.org/x/term` v0.46.0 and indirect
+  `golang.org/x/*`, `spf13/pflag` v1.0.10, and the `govulncheck` tool
+  (`golang.org/x/vuln` v1.8.0).
+- CI: golangci-lint pinned to v2.14.0 (was v2.12.2), `actions/checkout` v7,
+  and `actions/setup-go` v7.
+
 ## [0.4.0] - 2026-06-10
 
 ### Changed
