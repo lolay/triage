@@ -9,7 +9,7 @@ on:
 if: github.event.label.name == 'agent-triage'
 engine:
   id: copilot
-  model: claude-sonnet-4.5
+  model: claude-sonnet-5
 imports:
   - shared/agentic-prelude.md
 safe-outputs:

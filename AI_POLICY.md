@@ -16,10 +16,10 @@ fix version parsing for go1.27rc1-style tool output
 firstSemverToken stopped at the "rc" suffix and returned "1.27", which
 satisfied ">=1.27.1" constraints it should have failed.
 
-Assisted-by: Claude Opus 4.7
+Assisted-by: Claude Opus 5.5
 ```
 
-Use the agent's own product name and version (`Claude Opus 4.7`, `Claude Sonnet 4.5`, `GPT-5.5`, `Codex CLI`, `Aider`, ...). Multiple trailers are fine.
+Use the agent's own product name and version (`Claude Opus 5.5`, `Claude Sonnet 5`, `GPT-5.5`, `Codex CLI`, `Aider`, ...). Multiple trailers are fine.
 
 **In the PR description**, repeat the same `Assisted-by:` line(s) under the `## AI assistance` section of the [PR template](./.github/PULL_REQUEST_TEMPLATE.md). If the PR is entirely hand-written, write `Assisted-by: None`. Agent-opened PRs are checked for this automatically (`copilot-pr-validate.yml`).
 

@@ -35,7 +35,7 @@ Required. Name the specific agent + version, one per line, or "None" if the PR i
 Each AI-assisted commit also needs an Assisted-by: trailer. See AI_POLICY.md.
 -->
 
-Assisted-by: <e.g. Claude Opus 4.7, GPT-5.5, or "None">
+Assisted-by: <e.g. Claude Opus 5.5, GPT-5.5, or "None">
 
 ## Checklist
 

@@ -6,12 +6,12 @@ on:
 if: github.event.label.name == 'agent-exec'
 engine:
   id: copilot
-  model: claude-sonnet-4.5
+  model: claude-sonnet-5
 imports:
   - shared/agentic-prelude.md
 safe-outputs:
   assign-to-agent:
-    model: claude-sonnet-4.5
+    model: claude-sonnet-5
   add-comment:
     max: 1
 permissions:

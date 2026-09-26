@@ -6,7 +6,7 @@ on:
 if: github.event.label.name == 'agent-plan'
 engine:
   id: copilot
-  model: claude-opus-4.7
+  model: claude-opus-5.5
 imports:
   - shared/agentic-prelude.md
 safe-outputs:

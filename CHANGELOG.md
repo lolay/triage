@@ -42,6 +42,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Renovate PR (once per commit, at most three times per PR).
 - `copilot-setup-steps.yml` so Copilot sessions get the pinned Go toolchain
   and linters.
+- Agent models: `claude-opus-5.5` for plan and deep implementation,
+  `claude-sonnet-5` for triage, fast implementation, and review. nowline's
+  `claude-sonnet-4.5` was deprecated in Copilot on 2026-09-01.
 - `make aw-compile` / `make aw-check` with the gh-aw compiler pinned as
   `GH_AW_VERSION` (v0.74.8, tracked by Renovate in its own PR); CI fails on
   stale lock files. actionlint is now pinned (`ACTIONLINT_VERSION`) and part
