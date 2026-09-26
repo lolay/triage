@@ -35,9 +35,12 @@ each independent).
 | Target | Description |
 |--------|-------------|
 | `help` | List targets (default goal) |
-| `init` | `go mod download`; `INSTALL_PACKAGES=1` also installs golangci-lint |
+| `init` | `go mod download`; `INSTALL_PACKAGES=1` also runs `install-tools` |
+| `install-tools` | Install golangci-lint (`GOLANGCI_LINT_VERSION`) and actionlint (`ACTIONLINT_VERSION`) into `$(go env GOPATH)/bin` (no-op when already at the pins) |
+| `aw-compile` | Recompile the gh-aw agent workflows (`.github/workflows/agent-*.md` → `.lock.yml`) with the pinned `GH_AW_VERSION` (downloaded, checksum-verified) |
+| `aw-check` | `aw-compile`, then fail if any lock file changed or is uncommitted — CI runs this |
 | `build` | Compile the `triage` binary into `bin/` with build metadata stamped |
-| `lint` | gofmt drift check + `go vet` + golangci-lint (hard-fails if missing) |
+| `lint` | gofmt drift check + `go vet` + golangci-lint (hard-fails if missing; warns if not at the pin) + actionlint on all workflows |
 | `format` | Auto-fix formatting (`gofmt -w .`) |
 | `test` | `go test -race -cover ./...` |
 | `vuln` | `go tool govulncheck ./...` (dependency vulnerability scan) |
@@ -45,6 +48,7 @@ each independent).
 | `pre-commit` | Alias of `ci` |
 | `doctor` | Dogfood: build, then run `triage` against this repo's `triage.yaml`; `MODE=default\|release` |
 | `clean` | Remove `bin/` and `dist/` |
+| `print-VAR` | Print a Makefile variable (e.g. `make -s print-GORELEASER_VERSION`); CI reads tool pins this way |
 
 ### GitHub
 
@@ -75,9 +79,22 @@ Remote-mutating targets; each refuses to run without its `CONFIRM_*=1` variable.
 ## `make init`
 
 Idempotent. `go mod download` is safe to re-run. With `INSTALL_PACKAGES=1`,
-also installs golangci-lint into `$(go env GOPATH)/bin` when missing — the
-pinned version (`GOLANGCI_LINT_VERSION`) must match the Install step in
-`ci.yml`.
+also runs `make install-tools`.
+
+## Tool pins
+
+The Makefile is the only place tool versions are pinned:
+
+| Variable | Tool | Consumed by |
+|----------|------|-------------|
+| `GOLANGCI_LINT_VERSION` | golangci-lint | `make install-tools` (local + CI) |
+| `ACTIONLINT_VERSION` | actionlint | `make install-tools`; run by `make lint` |
+| `GH_AW_VERSION` | gh-aw compiler | `make aw-compile` / `make aw-check` |
+| `GORELEASER_VERSION` | goreleaser | `goreleaser-action` in `ci.yml` / `release.yml` via `make -s print-GORELEASER_VERSION` |
+
+The Go toolchain is pinned in `.go-version` (read by `actions/setup-go` and
+`make doctor`). Renovate keeps all of these current through the custom
+managers in `.github/renovate-shared.json`.
 
 ## `make doctor`
 

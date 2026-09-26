@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a new check type, flag, or change to triage's behavior.
+title: "feat: <short summary>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        triage has a deliberately narrow scope. Please skim [`specs/product.md` § Goals & non-goals](https://github.com/lolay/triage/blob/main/specs/product.md) first — triage checks readiness; it is not a version manager or task runner, and v1 does not execute fixes.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the readiness check you can't express today, not the implementation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed shape
+      description: The `triage.yaml` you'd like to write, or the command you'd like to run.
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Other approaches, or workarounds (e.g. a `command` check) you use today.
+
+  - type: checkboxes
+    id: agent-first-pass
+    attributes:
+      label: Agent first pass
+      description: |
+        Checking this box adds the `agent-triage` label, which enters this issue into the agent state machine. New check types and schema changes are discuss-first (see `AI_POLICY.md`), so expect the agent to route those to a maintainer. See [`.github/AGENT_TRIAGE.md`](https://github.com/lolay/triage/blob/main/.github/AGENT_TRIAGE.md).
+      options:
+        - label: Let an AI agent take a first pass at this issue.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have read `specs/product.md` § Goals & non-goals and believe this fits triage's scope.
+          required: true
+        - label: I have searched existing issues for similar proposals.
+          required: true

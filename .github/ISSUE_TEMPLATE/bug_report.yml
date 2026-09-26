@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a problem with the triage CLI (checks, profiles, output, exit codes).
+title: "bug: <short summary>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please search existing issues first.
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Minimal `triage.yaml` that reproduces the problem
+      description: Paste it inline, stripped down to the smallest config that still reproduces the issue.
+      render: yaml
+      placeholder: |
+        default:
+          - tool: go
+            version: ">=1.27"
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Exact command you ran
+      placeholder: triage --profile ci --json
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Full output (including exit code)
+      description: Add `--verbose` if it helps. Include `echo $?`.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      description: Cite the relevant section of `specs/product.md` or `specs/config.md` if you can.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: triage version
+      description: Output of `triage --version`, or the commit SHA if you built from source.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and install method
+      placeholder: macOS 15.5 (arm64), Homebrew
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: agent-first-pass
+    attributes:
+      label: Agent first pass
+      description: |
+        Checking this box adds the `agent-triage` label, which enters this issue into the agent state machine: an agent triages, plans, and (if appropriate) opens a fix PR for a maintainer to review. See [`.github/AGENT_TRIAGE.md`](https://github.com/lolay/triage/blob/main/.github/AGENT_TRIAGE.md).
+      options:
+        - label: Let an AI agent take a first pass at this issue.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I have searched existing issues for this problem.
+          required: true
+        - label: I have provided a minimal reproduction.
+          required: true

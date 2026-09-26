@@ -31,7 +31,7 @@ default:
     - group: Lint
       items:
         - tool: golangci-lint
-          hint: run 'make init INSTALL_PACKAGES=1' to install
+          hint: run 'make install-tools' to install
 
 release:
   extends: [default]

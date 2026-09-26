@@ -6,3 +6,5 @@
 # \n → \r\n on checkout, but the CLI always emits \n).
 internal/cli/testdata/**/*.golden text eol=lf
 internal/cli/testdata/**/*.txt    text eol=lf
+
+.github/workflows/*.lock.yml linguist-generated=true merge=ours

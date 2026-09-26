@@ -1,0 +1,97 @@
+name: Renovate autofix
+
+# When CI fails on a Renovate PR, hand the fix to the Copilot coding agent.
+#
+# Renovate's shared preset already assigns every Renovate PR to
+# copilot-swe-agent[bot] (as lolay/nowline does). This workflow is the part that
+# actually starts a session: on a failed `ci` run for a renovate/* branch it
+#   1. disables GitHub auto-merge on the PR, so anything Copilot changes beyond
+#      the version bump waits for a maintainer's Approve + Merge, and
+#   2. posts an @copilot comment naming the failed jobs and asking for the
+#      smallest fix that keeps `make pre-commit` green.
+#
+# Guard rails: acts only on the PR's current head commit, posts at most once
+# per head commit (hidden marker), and stops after MAX_NUDGES comments per PR
+# so a fix that keeps failing falls back to a human.
+#
+# Uses GH_AW_AGENT_TOKEN (not GITHUB_TOKEN): @copilot mentions must come from a
+# user with write access, and GITHUB_TOKEN-authored events do not trigger
+# further workflows. The comment's first line is not an agent-verdict marker,
+# so agent-verdict-apply.yml ignores it.
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate-autofix-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  nudge:
+    name: Ask Copilot to fix the Renovate PR
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      startsWith(github.event.workflow_run.head_branch, 'renovate/') &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    env:
+      GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
+      REPO: ${{ github.repository }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_URL: ${{ github.event.workflow_run.html_url }}
+      MAX_NUDGES: "3"
+    steps:
+      - name: Comment @copilot on the PR
+        run: |
+          set -euo pipefail
+
+          pr=$(gh pr list --repo "$REPO" --head "$HEAD_BRANCH" --state open \
+            --json number --jq '.[0].number // empty')
+          if [[ -z "$pr" ]]; then
+            echo "No open PR for $HEAD_BRANCH; nothing to do."
+            exit 0
+          fi
+
+          current_sha=$(gh pr view "$pr" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+          if [[ "$current_sha" != "$HEAD_SHA" ]]; then
+            echo "Run is for $HEAD_SHA but PR #$pr head is $current_sha; skipping stale run."
+            exit 0
+          fi
+
+          marker_prefix="<!-- renovate-autofix"
+          bodies=$(gh api "repos/$REPO/issues/$pr/comments" --paginate --jq '.[].body')
+          if grep -qF "$marker_prefix sha=$HEAD_SHA -->" <<< "$bodies"; then
+            echo "Already asked Copilot about $HEAD_SHA on PR #$pr."
+            exit 0
+          fi
+          nudges=$(grep -cF "$marker_prefix" <<< "$bodies" || true)
+          if (( nudges >= MAX_NUDGES )); then
+            echo "PR #$pr already has $nudges autofix requests (limit $MAX_NUDGES); leaving it to a maintainer."
+            exit 0
+          fi
+
+          gh pr merge "$pr" --repo "$REPO" --disable-auto 2>/dev/null || true
+
+          failed_jobs=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.conclusion == "failure") | "- [\(.name)](\(.html_url))"')
+
+          {
+            printf '@copilot CI failed on this Renovate PR ([run](%s), commit %s). Please fix it:\n\n' "$RUN_URL" "${HEAD_SHA:0:7}"
+            printf '%s\n\n' "${failed_jobs:-- (see the run for failed jobs)}"
+            printf '%s\n' "- Keep the dependency update Renovate made; make the smallest change that gets \`make pre-commit\` (and \`make aw-check\` where it exists) passing."
+            printf '%s\n' "- If the update needs generated files refreshed (for example \`make aw-compile\` after a gh-aw bump, or \`go mod tidy\`), use the repo's Makefile targets, never hand edits."
+            printf '%s\n' "- Follow AGENTS.md and AI_POLICY.md: add an \`Assisted-by:\` trailer to each commit."
+            printf '%s\n\n' "- If the update cannot be made to work without a design decision (breaking API, policy change), don't force it: explain what blocks it in a comment instead."
+            printf '%s\n\n' "Auto-merge has been turned off for this PR; a maintainer will review and merge after your fix."
+            printf '%s sha=%s -->\n' "$marker_prefix" "$HEAD_SHA"
+          } > /tmp/autofix-comment.md
+
+          gh pr comment "$pr" --repo "$REPO" --body-file /tmp/autofix-comment.md
+          echo "Asked Copilot to fix PR #$pr (request $((nudges + 1)) of $MAX_NUDGES)."

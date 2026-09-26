@@ -1,0 +1,117 @@
+name: Agent label transition
+
+# Triggered when any agent-*, originator-*, or maintainer-* label is added to
+# an issue or PR. Ported from lolay/nowline. Enforces the state-label-as-singleton invariant with
+# refined semantics (PR pair 2 / agent-verdict-glue):
+#
+#  - When originator-*/maintainer-* is added (by a maintainer or by
+#    agent-verdict-apply.yml), strips every other agent-*, originator-*, and
+#    maintainer-* state label from the target. Humans win unconditionally; an
+#    originator-*/maintainer-* label always displaces anything else.
+#
+#  - When agent-* is added (by agent-verdict-apply.yml after the apply
+#    workflow's own override check passed), strips prior agent-* state labels
+#    only. originator-*/maintainer-* labels are LEFT IN PLACE as defence-in-depth:
+#    if the apply workflow somehow missed the override check, the new agent label
+#    simply coexists with the owner label and the human still owns the issue.
+#
+# State labels managed: agent-triage, agent-plan, agent-deep, agent-exec,
+# agent-done, maintainer-only, originator-input, maintainer-decide,
+# maintainer-pr-safe, maintainer-pr-review.
+# Origin/metadata labels (dependencies, automated, bug, copilot-pr,
+# etc.) are not state labels and are never touched by this workflow.
+#
+# Runs in parallel with agent-verdict-apply.yml and any phase workflow
+# triggered by the same labeled event. No race condition because cleanup
+# never removes the just-added label.
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  transition:
+    name: Enforce single state label
+    runs-on: ubuntu-latest
+    # Trigger gate: agent-* / originator-* / maintainer-* are the state
+    # namespaces. (nowline also matches a legacy human-* prefix for its
+    # migration window; this estate never used it.)
+    if: >
+      startsWith(github.event.label.name, 'agent-') ||
+      startsWith(github.event.label.name, 'originator-') ||
+      startsWith(github.event.label.name, 'maintainer-')
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      ADDED_LABEL: ${{ github.event.label.name }}
+    steps:
+      - name: Remove stale state labels
+        run: |
+          set -euo pipefail
+
+          AGENT_LABELS=(
+            agent-triage
+            agent-plan
+            agent-deep
+            agent-exec
+            agent-done
+          )
+          ORIGINATOR_LABELS=(
+            originator-input
+          )
+          MAINTAINER_LABELS=(
+            maintainer-only
+            maintainer-decide
+            maintainer-pr-safe
+            maintainer-pr-review
+          )
+
+          # Refined behaviour (PR pair 2 / agent-verdict-glue):
+          #  - originator-*/maintainer-* added -> strip ALL other state labels
+          #    (humans win unconditionally)
+          #  - agent-* added -> strip prior agent-* state labels ONLY; leave
+          #    originator-*/maintainer-* intact as defence-in-depth (if
+          #    agent-verdict-apply.yml somehow missed the override check, the new
+          #    agent label coexists rather than displacing the owner label)
+          if [[ "$ADDED_LABEL" == originator-* || "$ADDED_LABEL" == maintainer-* ]]; then
+            STRIPPABLE=("${AGENT_LABELS[@]}" "${ORIGINATOR_LABELS[@]}" "${MAINTAINER_LABELS[@]}")
+          else
+            STRIPPABLE=("${AGENT_LABELS[@]}")
+          fi
+
+          if [[ "${{ github.event_name }}" == "issues" ]]; then
+            target_type="issue"
+            target_number="${{ github.event.issue.number }}"
+            current_labels=$(
+              gh issue view "$target_number" --repo "$REPO" --json labels \
+                --jq '[.labels[].name]'
+            )
+          else
+            target_type="pr"
+            target_number="${{ github.event.pull_request.number }}"
+            current_labels=$(
+              gh pr view "$target_number" --repo "$REPO" --json labels \
+                --jq '[.labels[].name]'
+            )
+          fi
+
+          for label in "${STRIPPABLE[@]}"; do
+            if [[ "$label" == "$ADDED_LABEL" ]]; then
+              continue
+            fi
+            if printf '%s' "$current_labels" | grep -q "\"$label\""; then
+              if [[ "$target_type" == "issue" ]]; then
+                gh issue edit "$target_number" --repo "$REPO" \
+                  --remove-label "$label" 2>/dev/null || true
+              else
+                gh pr edit "$target_number" --repo "$REPO" \
+                  --remove-label "$label" 2>/dev/null || true
+              fi
+            fi
+          done

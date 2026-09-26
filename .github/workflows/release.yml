@@ -53,7 +53,7 @@ jobs:
       # fetch-tags: true is required; fetch-depth: 0 alone does not guarantee
       # tags are fetched in actions/checkout v4+, causing git describe to fall
       # back to v0.0.0 and compute the wrong next version.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -99,19 +99,24 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: true
           cache-dependency-path: go.mod
 
+      # goreleaser is pinned by GORELEASER_VERSION in the Makefile.
+      - name: Read goreleaser pin
+        id: pins
+        run: echo "goreleaser=$(make -s print-GORELEASER_VERSION)" >> "$GITHUB_OUTPUT"
+
       - uses: goreleaser/goreleaser-action@v7
         with:
-          version: "~> v2"
+          version: ${{ steps.pins.outputs.goreleaser }}
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -144,7 +149,7 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

@@ -5,6 +5,53 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+- Go toolchain pin (`.go-version`) bumped from 1.26.4 to 1.27.1; building
+  from source and `make doctor` now expect Go >= 1.27.1. The `go.mod`
+  language floor stays at 1.26.
+- Dependencies updated: `golang.org/x/term` v0.46.0 and indirect
+  `golang.org/x/*`, `spf13/pflag` v1.0.10, and the `govulncheck` tool
+  (`golang.org/x/vuln` v1.8.0).
+- CI: golangci-lint pinned to v2.14.0 (was v2.12.2), `actions/checkout` v7,
+  and `actions/setup-go` v7.
+- Tool versions are pinned only in the `Makefile`: CI installs golangci-lint
+  via the new `make install-tools` (previously the version was duplicated in
+  `ci.yml` twice), and reads goreleaser from `GORELEASER_VERSION` (v2.18.2)
+  instead of the floating `~> v2`.
+- `make init INSTALL_PACKAGES=1` now installs the pinned golangci-lint instead
+  of `HEAD`/latest; `make lint` warns when the golangci-lint on `PATH` differs
+  from the pin.
+
+### Added
+- Renovate: `renovate.json` plus the shared preset
+  `.github/renovate-shared.json` (also used by `lolay/triage-action`) — weekly
+  grouped minor/patch PR, Go modules, GitHub Actions, and custom managers for
+  `.go-version` and the Makefile tool pins. The `go.mod` `go` directive stays
+  a manually raised floor.
+- `make install-tools` and `make print-VAR`.
+- Agent state machine ported from `lolay/nowline` (`.github/AGENT_TRIAGE.md`):
+  gh-aw phase workflows (`agent-triage`, `agent-plan`, `agent-deep`,
+  `agent-exec`, `agent-review`) with prompts in `.github/agent-prompts/`, the
+  verdict/label glue workflows, Copilot PR stamping and contract validation,
+  label runbooks in `.github/agent-actions/`, and an `agent-labels.yml`
+  workflow that creates the labels.
+- Renovate autofix: Renovate PRs are assigned to the Copilot coding agent, and
+  `renovate-autofix.yml` disables auto-merge and asks Copilot to fix a failing
+  Renovate PR (once per commit, at most three times per PR).
+- `copilot-setup-steps.yml` so Copilot sessions get the pinned Go toolchain
+  and linters.
+- Agent models: `claude-opus-5.5` for plan and deep implementation,
+  `claude-sonnet-5` for triage, fast implementation, and review. nowline's
+  `claude-sonnet-4.5` was deprecated in Copilot on 2026-09-01.
+- `make aw-compile` / `make aw-check` with the gh-aw compiler pinned as
+  `GH_AW_VERSION` (v0.74.8, tracked by Renovate in its own PR); CI fails on
+  stale lock files. actionlint is now pinned (`ACTIONLINT_VERSION`) and part
+  of `make lint`.
+- `AGENTS.md`, `AI_POLICY.md`, issue templates (with an "agent first pass"
+  checkbox), and a PR template.
+
 ## [0.4.0] - 2026-06-10
 
 ### Changed

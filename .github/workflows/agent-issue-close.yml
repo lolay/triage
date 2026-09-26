@@ -1,0 +1,30 @@
+name: Agent issue close
+
+# Triggered when agent-done is added to an open issue.
+# Closes the issue — covers the empty-PR resolved-without-action path where
+# the plan phase emits agent-done without a PR (and therefore without a
+# Closes #N auto-close). Idempotent no-op when GitHub already auto-closed
+# the issue via the Closes #N trailer in a merged PR.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+jobs:
+  close:
+    name: Close resolved issue
+    runs-on: ubuntu-latest
+    if: >
+      github.event.label.name == 'agent-done' &&
+      github.event.issue.state == 'open'
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Close issue
+        run: |
+          gh issue close "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --reason completed

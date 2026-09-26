@@ -1,0 +1,43 @@
+name: Label from issue template
+
+# Applies agent-triage when a newly-opened issue has the "Let an AI agent take
+# a first pass" checkbox checked. GitHub issue forms don't natively turn
+# checkbox state into labels, so this workflow does the mapping.
+#
+# The checkbox text must match the label text in bug_report.yml and
+# feature_request.yml exactly (minus the leading "[ ] " / "[x] " marker).
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  apply-agent-label:
+    name: Apply agent-triage from checkbox
+    runs-on: ubuntu-latest
+    env:
+      # GH_AW_AGENT_TOKEN (not GITHUB_TOKEN): the agent-triage label must fire
+      # agent-triage.lock.yml, and GITHUB_TOKEN-driven events never start other
+      # workflows (GitHub loop prevention). lolay/nowline's copy uses
+      # GITHUB_TOKEN here, which leaves the checkbox path inert.
+      GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
+    steps:
+      - name: Check for agent-first-pass box and label
+        env:
+          # Pass untrusted issue body through env, never inline-interpolate into
+          # the shell script. See actionlint expression-untrusted check and
+          # GitHub's secure-use guidance for script-injection mitigation.
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Match a checked checkbox (- [x] or - [X]) whose text starts with
+          # "Let an AI agent take a first pass"
+          if printf '%s' "$ISSUE_BODY" | grep -qiE '^\s*-\s*\[x\]\s*Let an AI agent take a first pass'; then
+            gh issue edit "$ISSUE_NUMBER" \
+              --repo "$REPO" \
+              --add-label "agent-triage"
+          fi

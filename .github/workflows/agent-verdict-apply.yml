@@ -1,0 +1,173 @@
+name: Agent verdict apply
+
+# Reads a verdict marker from a newly-posted issue or PR comment and applies
+# the proposed state label, gated by:
+#   (a) any `originator-*` or `maintainer-*` label currently present blocks
+#       any `agent-*` verdict (the override check — humans win unconditionally),
+#   (b) the proposed verdict must be in the per-state allowed-verdicts list
+#       (the state machine encoded in this workflow),
+#   (c) the comment must be a real verdict comment — first non-blank line
+#       matches the marker format: agent-verdict: <label>
+#       (plain text, no HTML/XML, no code fence — chosen so gh-aw's safe-outputs
+#       content sanitizer leaves the marker untouched. The earlier
+#       `<!-- agent-verdict: <label> -->` form was mangled by gh-aw's T6
+#       Markdown Safety transformations and silently dropped by the parser.)
+#
+# Triggered by issue_comment.created on both issues and PRs. Author-agnostic
+# by design: verdicts emitted by gh-aw phase orchestrators (via the
+# safe-outputs.add-comment channel), by Copilot coding-agent sessions (their
+# empty-diff fallback path inside agent-deep / agent-exec), and by human
+# moderators using the same marker syntax all flow through this workflow.
+#
+# Uses GH_AW_AGENT_TOKEN (not GITHUB_TOKEN) so the resulting labeled event
+# fires downstream phase workflows. Same loop-prevention finding as
+# copilot-pr-stamp.yml — GITHUB_TOKEN-driven events are suppressed by GitHub's
+# loop-prevention and would prevent the next phase from waking up.
+#
+# Self-loop safety: when this workflow posts a follow-up comment (suppression
+# or rejection), that fires another issue_comment.created -> another
+# agent-verdict-apply run -> parse step finds no marker on the first non-blank
+# line -> exits silently. No infinite loop.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+concurrency:
+  # Serialize verdicts on the same issue/PR; parallelize across different ones.
+  # cancel-in-progress: false — both runs must complete; cancellation could
+  # leave a verdict half-applied.
+  group: agent-verdict-apply-${{ github.repository }}-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Apply verdict label
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      REPO: ${{ github.repository }}
+      IS_PR: ${{ github.event.issue.pull_request != null }}
+    steps:
+      - name: Parse verdict marker
+        id: parse
+        run: |
+          set -euo pipefail
+
+          verdict=""
+          search_started=""
+          while IFS= read -r line; do
+            if [[ -z "$search_started" ]]; then
+              stripped="${line//[[:space:]]/}"
+              [[ -z "$stripped" ]] && continue
+              search_started=1
+              if [[ "$line" =~ ^[[:space:]]*agent-verdict:[[:space:]]*([a-z][a-z0-9-]+)[[:space:]]*$ ]]; then
+                verdict="${BASH_REMATCH[1]}"
+              fi
+              break
+            fi
+          done <<< "$COMMENT_BODY"
+
+          if [[ -z "$verdict" ]]; then
+            echo "No verdict marker on first non-blank line; treating as regular comment."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Parsed verdict: $verdict"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+
+      - name: Apply verdict with state-machine and override check
+        if: steps.parse.outputs.found == 'true'
+        env:
+          VERDICT: ${{ steps.parse.outputs.verdict }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$IS_PR" == "true" ]]; then
+            target_type="pr"
+            current_labels=$(gh pr view "$ISSUE_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')
+          else
+            target_type="issue"
+            current_labels=$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')
+          fi
+
+          current_state=""
+          nonagent_override=""
+          while IFS= read -r label; do
+            [[ -z "$label" ]] && continue
+            # The "non-agent owns it" set: originator-*/maintainer-* labels are
+            # owned by the filer or a maintainer, not the automation.
+            if [[ "$label" == originator-* || "$label" == maintainer-* ]]; then
+              [[ -z "$nonagent_override" ]] && nonagent_override="$label"
+              continue
+            fi
+            # copilot-pr is metadata, not state — skip it
+            if [[ "$label" == agent-* && "$label" != "copilot-pr" ]]; then
+              [[ -z "$current_state" ]] && current_state="$label"
+            fi
+          done <<< "$current_labels"
+
+          echo "target_type=$target_type current_state='$current_state' nonagent_override='$nonagent_override' verdict='$VERDICT'"
+
+          # (a) Override check: any originator-*/maintainer-* label blocks any
+          # agent-* verdict. Originator/maintainer verdicts (-> originator-*/
+          # maintainer-*) are rejected at the allowed-list check below — humans
+          # use the label UI directly for state moves.
+          if [[ "$VERDICT" == agent-* && -n "$nonagent_override" ]]; then
+            echo "Verdict '$VERDICT' suppressed by override '$nonagent_override'."
+            comment_body="Verdict \`$VERDICT\` suppressed: override label \`$nonagent_override\` is present. The state machine respects the override and will not apply the proposed agent state label. To resume the agent flow, remove the \`originator-\`/\`maintainer-\` label \`$nonagent_override\` and add the desired \`agent-*\` label (or re-add \`agent-triage\` to restart from Phase 1)."
+            if [[ "$target_type" == "pr" ]]; then
+              gh pr comment "$ISSUE_NUMBER" --repo "$REPO" --body "$comment_body"
+            else
+              gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$comment_body"
+            fi
+            exit 0
+          fi
+
+          # (b) State-machine allowed-verdicts per current state.
+          # This case statement is the canonical encoding of the state machine —
+          # anyone reading it can trace exactly which transitions are legal.
+          if [[ "$target_type" == "pr" ]]; then
+            case "$current_state" in
+              "")  allowed="maintainer-pr-safe maintainer-pr-review" ;;
+              *)   allowed="" ;;
+            esac
+          else
+            case "$current_state" in
+              ""|"agent-triage")          allowed="agent-plan maintainer-only" ;;
+              "agent-plan")               allowed="agent-deep agent-exec agent-done originator-input maintainer-decide" ;;
+              "agent-deep"|"agent-exec")  allowed="agent-done originator-input maintainer-decide" ;;
+              *)                          allowed="" ;;
+            esac
+          fi
+
+          if [[ -z "$allowed" ]] || ! printf '%s' " $allowed " | grep -qF " $VERDICT "; then
+            echo "Verdict '$VERDICT' rejected: not allowed from state '$current_state' on $target_type."
+            allowed_display="${allowed:-<none — terminal state>}"
+            current_display="${current_state:-<no state label>}"
+            comment_body="Verdict \`$VERDICT\` rejected: not allowed from current state \`$current_display\` on this $target_type. Allowed verdicts from this state: \`$allowed_display\`. See \`.github/AGENT_TRIAGE.md\` for the full transition table."
+            if [[ "$target_type" == "pr" ]]; then
+              gh pr comment "$ISSUE_NUMBER" --repo "$REPO" --body "$comment_body"
+            else
+              gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$comment_body"
+            fi
+            exit 0
+          fi
+
+          # (c) Apply the label — GH_AW_AGENT_TOKEN ensures the resulting
+          # labeled event fires downstream phase workflows.
+          echo "Applying verdict label '$VERDICT' to $target_type #$ISSUE_NUMBER"
+          if [[ "$target_type" == "pr" ]]; then
+            gh pr edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "$VERDICT"
+          else
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "$VERDICT"
+          fi

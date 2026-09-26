@@ -27,7 +27,34 @@ make doctor       # dogfood: triage checks its own environment (see triage.yaml)
 
 You need the toolchain triage checks for itself — run `make doctor` (or
 `triage` once built) and install whatever it flags. The Go version is
-pinned in `.go-version`.
+pinned in `.go-version`; `make install-tools` installs golangci-lint and
+actionlint at the Makefile's pins.
+
+### AI assistance and the agent flow
+
+AI-assisted contributions are welcome under [`AI_POLICY.md`](./AI_POLICY.md)
+(`Assisted-by:` on every AI-assisted commit and in the PR). Agents start from
+[`AGENTS.md`](./AGENTS.md). Issues can opt into an agent first pass (a checkbox
+in the issue templates); the triage → plan → implement → review state machine,
+its labels, and how to override it are documented in
+[`.github/AGENT_TRIAGE.md`](./.github/AGENT_TRIAGE.md). Every agent PR still
+needs a maintainer's Approve + Merge.
+
+### Dependency updates
+
+Tool versions live in exactly one place each: Go in `.go-version`,
+golangci-lint, actionlint, goreleaser, and the gh-aw compiler in the `Makefile`
+(CI reads them from there).
+[Renovate](./renovate.json) keeps them — plus Go modules and GitHub Actions —
+current via the shared preset in
+[`.github/renovate-shared.json`](./.github/renovate-shared.json), which
+`lolay/triage-action` also extends: one grouped minor/patch PR a week
+(auto-merge once CI is green), majors individually after a 30-day cooldown, and
+a separate hand-reviewed PR for a new Go minor or a gh-aw compiler bump. The
+`go` directive in `go.mod` is the from-source consumer floor and is deliberately
+excluded — raise it by hand as policy work. Renovate PRs are assigned to the
+Copilot coding agent, and when CI fails on one, `renovate-autofix.yml` turns off
+its auto-merge and asks Copilot to fix it; a maintainer then reviews and merges.
 
 ## Making changes
 
