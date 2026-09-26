@@ -31,6 +31,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `.go-version` and the Makefile tool pins. The `go.mod` `go` directive stays
   a manually raised floor.
 - `make install-tools` and `make print-VAR`.
+- Agent state machine ported from `lolay/nowline` (`.github/AGENT_TRIAGE.md`):
+  gh-aw phase workflows (`agent-triage`, `agent-plan`, `agent-deep`,
+  `agent-exec`, `agent-review`) with prompts in `.github/agent-prompts/`, the
+  verdict/label glue workflows, Copilot PR stamping and contract validation,
+  label runbooks in `.github/agent-actions/`, and an `agent-labels.yml`
+  workflow that creates the labels.
+- Renovate autofix: Renovate PRs are assigned to the Copilot coding agent, and
+  `renovate-autofix.yml` disables auto-merge and asks Copilot to fix a failing
+  Renovate PR (once per commit, at most three times per PR).
+- `copilot-setup-steps.yml` so Copilot sessions get the pinned Go toolchain
+  and linters.
+- `make aw-compile` / `make aw-check` with the gh-aw compiler pinned as
+  `GH_AW_VERSION` (v0.74.8, tracked by Renovate in its own PR); CI fails on
+  stale lock files. actionlint is now pinned (`ACTIONLINT_VERSION`) and part
+  of `make lint`.
+- `AGENTS.md`, `AI_POLICY.md`, issue templates (with an "agent first pass"
+  checkbox), and a PR template.
 
 ## [0.4.0] - 2026-06-10
 

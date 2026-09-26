@@ -1,0 +1,49 @@
+name: Agent labels
+
+# Creates (or updates) every label the agent state machine, Copilot glue, and
+# Renovate use. The glue workflows add labels with `gh ... --add-label`, which
+# fails when the label does not exist yet, so this runs whenever this file
+# changes on main and can be re-run by hand. Idempotent (`gh label create --force`).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/agent-labels.yml
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    name: Sync labels
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Create or update labels
+        run: |
+          set -euo pipefail
+          while IFS='|' read -r name color description; do
+            [[ -z "$name" ]] && continue
+            gh label create "$name" --repo "$REPO" --color "$color" --description "$description" --force
+          done <<'LABELS'
+          agent-triage|1d76db|Agent: triage me (phase 1)
+          agent-plan|1d76db|Agent: triage approved; planning (phase 2)
+          agent-deep|1d76db|Agent: routed to deep implementation (Opus)
+          agent-exec|1d76db|Agent: routed to fast implementation (Sonnet)
+          agent-done|0e8a16|Agent: resolved; issue closes
+          originator-input|fbca04|Waiting on the issue filer
+          maintainer-only|d93f0b|Parked outside the agent flow
+          maintainer-decide|fbca04|Waiting on a maintainer to pick a route
+          maintainer-pr-safe|0e8a16|Agent review: low-risk; maintainer approves and merges
+          maintainer-pr-review|d93f0b|Agent review: concerns flagged; review carefully
+          copilot-pr|c5def5|PR opened by the Copilot coding agent
+          dependencies|0366d6|Dependency update (Renovate)
+          automated|ededed|Opened by automation
+          major|b60205|Major dependency update
+          bug|d73a4a|Something isn't working
+          enhancement|a2eeef|New feature or request
+          LABELS

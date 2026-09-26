@@ -1,0 +1,43 @@
+name: Agent PR merged
+
+# Triggered when a Copilot-authored PR is merged. Parses Closes #N from the
+# PR body and adds agent-done to the linked issue as an audit-trail label.
+# GitHub's Closes #N auto-close fires in parallel; this workflow plants the
+# label so the resolution shows up in is:closed label:agent-done queries
+# regardless of whether the issue was already closed by GitHub's mechanism.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  label-issue:
+    name: Add agent-done to linked issue
+    runs-on: ubuntu-latest
+    if: >
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'copilot-pr')
+    env:
+      GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Parse Closes #N and label issue
+        run: |
+          issue_number=$(
+            printf '%s' "$PR_BODY" | \
+            grep -oiE 'closes? #[0-9]+' | \
+            head -1 | \
+            grep -oE '[0-9]+'
+          )
+          if [[ -z "$issue_number" ]]; then
+            echo "No 'Closes #N' found in PR body; skipping."
+            exit 0
+          fi
+          echo "Linking to issue #$issue_number"
+          gh issue edit "$issue_number" --repo "$REPO" \
+            --add-label "agent-done" || true

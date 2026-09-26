@@ -28,10 +28,10 @@ jobs:
       - name: go mod verify
         run: go mod verify
 
-      # Install golangci-lint at GOLANGCI_LINT_VERSION (Makefile is the only
-      # pin). Locally: `make install-tools` (or `make init INSTALL_PACKAGES=1`).
+      # Install golangci-lint + actionlint at the Makefile pins (the only
+      # pins). Locally: `make install-tools` (or `make init INSTALL_PACKAGES=1`).
       # `make lint` fails hard if the binary is missing.
-      - name: Install golangci-lint
+      - name: Install pinned tools
         run: make install-tools
 
       - name: make ci
@@ -41,6 +41,17 @@ jobs:
       # go.mod tool dependency; runs on every push and PR).
       - name: make vuln
         run: make vuln
+
+  aw-check:
+    name: agentic workflows compiled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Recompiles .github/workflows/agent-*.md with the pinned gh-aw
+      # (GH_AW_VERSION) and fails if any .lock.yml is stale.
+      - name: make aw-check
+        run: make aw-check
 
   ci-windows:
     name: build · test (windows)

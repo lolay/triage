@@ -1,0 +1,34 @@
+name: Copilot Setup Steps
+
+# Read by the Copilot coding agent before each session (agent-deep / agent-exec
+# delegations and renovate-autofix requests). It provisions the same toolchain
+# CI uses, so Copilot can run `make pre-commit` before it pushes. The job name
+# must stay `copilot-setup-steps`. The push/pull_request triggers only exist to
+# validate this file when it changes.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache: true
+          cache-dependency-path: go.mod
+
+      # go mod download + pinned golangci-lint and actionlint (Makefile pins).
+      - name: make init
+        run: make init INSTALL_PACKAGES=1

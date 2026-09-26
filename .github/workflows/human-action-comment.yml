@@ -1,0 +1,66 @@
+name: Human action comment
+
+# When an originator-* or maintainer-* label lands on an issue or PR, posts a
+# one-line next-action summary plus a link to that label's instruction runbook
+# at .github/agent-actions/<label>.md.
+#
+# Uses GITHUB_TOKEN deliberately: GitHub's loop-prevention design means a
+# GITHUB_TOKEN-driven comment will NOT trigger agent-verdict-apply.yml's
+# issue_comment.created event — so this comment is strictly informational and
+# never carries a verdict marker.
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  comment:
+    name: Post next-action hint
+    runs-on: ubuntu-latest
+    if: >
+      startsWith(github.event.label.name, 'originator-') ||
+      startsWith(github.event.label.name, 'maintainer-')
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ADDED_LABEL: ${{ github.event.label.name }}
+      REPO: ${{ github.repository }}
+      SERVER_URL: ${{ github.server_url }}
+    steps:
+      - name: Post next-action comment
+        run: |
+          set -euo pipefail
+
+          case "$ADDED_LABEL" in
+            originator-input)
+              NEXT_ACTION="The agent needs info only you (the filer) have. Read its \`## What I need from you\` comment, reply, then remove \`originator-input\` and add \`agent-plan\` to resume. Not worth pursuing? Add \`maintainer-only\` or close." ;;
+            maintainer-only)
+              NEXT_ACTION="Parked outside the agent flow — no agent action. To re-admit, add \`agent-triage\` (cleanup removes \`maintainer-only\`). Else handle manually or close." ;;
+            maintainer-decide)
+              NEXT_ACTION="The agent hit a fork. Read its numbered options and recommendation, then add \`agent-deep\` (Opus) or \`agent-exec\` (Sonnet) to route. Going offline? Add \`maintainer-only\`." ;;
+            maintainer-pr-safe)
+              NEXT_ACTION="Agent review judged this PR low-risk and on-plan. Quick review, then **Approve + Merge** in the GitHub UI (you are not the author — Copilot is — so Approve is enabled). Problem found? Add \`maintainer-pr-review\` with comments, or close the PR. Nothing auto-merges." ;;
+            maintainer-pr-review)
+              NEXT_ACTION="Agent review flagged concerns — see its comment for the list. Review carefully. OK? **Approve + Merge** in the GitHub UI. Not OK? Request changes or close the PR; if you close it, relabel the linked issue (\`originator-input\` to bounce to the filer, \`maintainer-only\` to park). Nothing auto-merges." ;;
+            *)
+              echo "Label '$ADDED_LABEL' matched the prefix gate but has no case entry; skipping."
+              exit 0 ;;
+          esac
+
+          RUNBOOK_URL="${SERVER_URL}/${REPO}/blob/main/.github/agent-actions/${ADDED_LABEL}.md"
+          BODY="$(printf '%s\n\nRunbook: %s\n' "$NEXT_ACTION" "$RUNBOOK_URL")"
+
+          if [[ "${{ github.event_name }}" == "issues" ]]; then
+            gh issue comment "${{ github.event.issue.number }}" \
+              --repo "$REPO" \
+              --body "$BODY"
+          else
+            gh pr comment "${{ github.event.pull_request.number }}" \
+              --repo "$REPO" \
+              --body "$BODY"
+          fi

@@ -1,0 +1,35 @@
+name: Copilot PR stamp
+
+# Stamps the copilot-pr metadata label on PRs authored by Copilot's
+# coding-agent identity. This is the SINGLE chokepoint in the estate where
+# the rename-fragile bot-identity check lives. Downstream workflows
+# (copilot-pr-validate.yml, agent-review.md, agent-pr-merged.yml) filter
+# on the label instead of repeating this check.
+#
+# When GitHub next renames the Copilot bot (e.g. to copilot-coding-agent[bot])
+# only this file needs updating — no gh aw compile, no downstream edits.
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  stamp:
+    name: Stamp copilot-pr label
+    runs-on: ubuntu-latest
+    if: >
+      github.event.pull_request.user.login == 'copilot-swe-agent[bot]' ||
+      github.event.pull_request.user.login == 'Copilot'
+    env:
+      # GH_AW_AGENT_TOKEN (not GITHUB_TOKEN) so the resulting
+      # pull_request.labeled event fires downstream label-triggered workflows.
+      # GITHUB_TOKEN-driven events are suppressed by GitHub's loop-prevention.
+      GH_TOKEN: ${{ secrets.GH_AW_AGENT_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Add copilot-pr label
+        run: gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label copilot-pr

@@ -11,6 +11,7 @@
     "timezone": "UTC",
     "schedule": ["before 09:00 on Friday"],
     "labels": ["dependencies", "automated"],
+    "assignees": ["copilot-swe-agent[bot]"],
     "reviewersFromCodeOwners": true,
     "prConcurrentLimit": 10,
     "prHourlyLimit": 0,
@@ -52,6 +53,13 @@
             "groupSlug": "go-toolchain",
             "automerge": false,
             "description": "A new Go minor (1.x) changes the toolchain CI builds and ships with; review by hand. Go patch releases ride the weekly minor/patch group."
+        },
+        {
+            "matchPackageNames": ["github/gh-aw"],
+            "groupName": "gh-aw compiler",
+            "groupSlug": "gh-aw",
+            "automerge": false,
+            "description": "Bumping GH_AW_VERSION requires regenerating the agent-*.lock.yml files (make aw-compile). CI's aw-check fails until that is done, and renovate-autofix.yml asks Copilot to do it; a maintainer reviews the regenerated workflows before merging."
         }
     ],
     "customManagers": [
@@ -95,6 +103,14 @@
             "matchStrings": ["SHELLCHECK_VERSION\\s*\\??=\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
             "datasourceTemplate": "github-releases",
             "depNameTemplate": "koalaman/shellcheck"
+        },
+        {
+            "customType": "regex",
+            "description": "Track the gh-aw compiler pinned in the Makefile (make aw-compile / aw-check)",
+            "managerFilePatterns": ["/(^|\\/)Makefile$/"],
+            "matchStrings": ["GH_AW_VERSION\\s*\\??=\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "github-releases",
+            "depNameTemplate": "github/gh-aw"
         }
     ]
 }
