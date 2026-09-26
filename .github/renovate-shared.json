@@ -1,0 +1,100 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "platformAutomerge": true,
+    "extends": [
+        "config:recommended",
+        "group:monorepos",
+        "group:recommended",
+        ":semanticCommits",
+        ":dependencyDashboard"
+    ],
+    "timezone": "UTC",
+    "schedule": ["before 09:00 on Friday"],
+    "labels": ["dependencies", "automated"],
+    "reviewersFromCodeOwners": true,
+    "prConcurrentLimit": 10,
+    "prHourlyLimit": 0,
+    "rebaseWhen": "behind-base-branch",
+    "rangeStrategy": "bump",
+    "minimumReleaseAge": "14 days",
+    "postUpdateOptions": ["gomodTidy"],
+    "packageRules": [
+        {
+            "matchUpdateTypes": ["minor", "patch"],
+            "groupName": "all minor and patch updates",
+            "groupSlug": "minor-patch",
+            "commitMessagePrefix": "chore(deps):",
+            "automerge": true
+        },
+        {
+            "matchUpdateTypes": ["major"],
+            "addLabels": ["major"],
+            "commitMessagePrefix": "feat(deps)!:",
+            "minimumReleaseAge": "30 days"
+        },
+        {
+            "matchManagers": ["gomod"],
+            "matchDepTypes": ["golang"],
+            "enabled": false,
+            "description": "The go.mod `go` directive is the consumer floor (minimum Go to build from source), raised deliberately as policy work — not a routine bump. The toolchain CI builds with is .go-version, tracked below."
+        },
+        {
+            "matchManagers": ["gomod"],
+            "matchPackageNames": ["golang.org/x/vuln"],
+            "enabled": true,
+            "description": "govulncheck is a go.mod `tool` dependency recorded as // indirect, which Renovate skips by default; keep the scanner current."
+        },
+        {
+            "matchDatasources": ["golang-version"],
+            "matchPackageNames": ["go"],
+            "matchUpdateTypes": ["minor"],
+            "groupName": "Go toolchain",
+            "groupSlug": "go-toolchain",
+            "automerge": false,
+            "description": "A new Go minor (1.x) changes the toolchain CI builds and ships with; review by hand. Go patch releases ride the weekly minor/patch group."
+        }
+    ],
+    "customManagers": [
+        {
+            "customType": "regex",
+            "description": "Track the Go toolchain pinned in .go-version (read by actions/setup-go and triage's own doctor check)",
+            "managerFilePatterns": ["/(^|\\/)\\.go-version$/"],
+            "matchStrings": ["^(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s*$"],
+            "datasourceTemplate": "golang-version",
+            "depNameTemplate": "go"
+        },
+        {
+            "customType": "regex",
+            "description": "Track golangci-lint pinned in the Makefile (single source of truth; CI installs via `make install-tools`)",
+            "managerFilePatterns": ["/(^|\\/)Makefile$/"],
+            "matchStrings": ["GOLANGCI_LINT_VERSION\\s*\\??=\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "github-releases",
+            "depNameTemplate": "golangci/golangci-lint"
+        },
+        {
+            "customType": "regex",
+            "description": "Track goreleaser pinned in the Makefile (CI reads it via `make -s print-GORELEASER_VERSION`)",
+            "managerFilePatterns": ["/(^|\\/)Makefile$/"],
+            "matchStrings": ["GORELEASER_VERSION\\s*\\??=\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "github-releases",
+            "depNameTemplate": "goreleaser/goreleaser"
+        },
+        {
+            "customType": "regex",
+            "description": "Track actionlint pinned in the Makefile",
+            "managerFilePatterns": ["/(^|\\/)Makefile$/"],
+            "matchStrings": ["ACTIONLINT_VERSION\\s*\\??=\\s*(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "github-releases",
+            "depNameTemplate": "rhysd/actionlint",
+            "extractVersionTemplate": "^v(?<version>.+)$"
+        },
+        {
+            "customType": "regex",
+            "description": "Track shellcheck pinned in the Makefile",
+            "managerFilePatterns": ["/(^|\\/)Makefile$/"],
+            "matchStrings": ["SHELLCHECK_VERSION\\s*\\??=\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "github-releases",
+            "depNameTemplate": "koalaman/shellcheck"
+        }
+    ]
+}

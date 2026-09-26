@@ -35,9 +35,10 @@ each independent).
 | Target | Description |
 |--------|-------------|
 | `help` | List targets (default goal) |
-| `init` | `go mod download`; `INSTALL_PACKAGES=1` also installs golangci-lint |
+| `init` | `go mod download`; `INSTALL_PACKAGES=1` also runs `install-tools` |
+| `install-tools` | Install golangci-lint at `GOLANGCI_LINT_VERSION` into `$(go env GOPATH)/bin` (no-op when already at the pin) |
 | `build` | Compile the `triage` binary into `bin/` with build metadata stamped |
-| `lint` | gofmt drift check + `go vet` + golangci-lint (hard-fails if missing) |
+| `lint` | gofmt drift check + `go vet` + golangci-lint (hard-fails if missing; warns if not at the pin) |
 | `format` | Auto-fix formatting (`gofmt -w .`) |
 | `test` | `go test -race -cover ./...` |
 | `vuln` | `go tool govulncheck ./...` (dependency vulnerability scan) |
@@ -45,6 +46,7 @@ each independent).
 | `pre-commit` | Alias of `ci` |
 | `doctor` | Dogfood: build, then run `triage` against this repo's `triage.yaml`; `MODE=default\|release` |
 | `clean` | Remove `bin/` and `dist/` |
+| `print-VAR` | Print a Makefile variable (e.g. `make -s print-GORELEASER_VERSION`); CI reads tool pins this way |
 
 ### GitHub
 
@@ -75,9 +77,20 @@ Remote-mutating targets; each refuses to run without its `CONFIRM_*=1` variable.
 ## `make init`
 
 Idempotent. `go mod download` is safe to re-run. With `INSTALL_PACKAGES=1`,
-also installs golangci-lint into `$(go env GOPATH)/bin` when missing — the
-pinned version (`GOLANGCI_LINT_VERSION`) must match the Install step in
-`ci.yml`.
+also runs `make install-tools`.
+
+## Tool pins
+
+The Makefile is the only place tool versions are pinned:
+
+| Variable | Tool | Consumed by |
+|----------|------|-------------|
+| `GOLANGCI_LINT_VERSION` | golangci-lint | `make install-tools` (local + CI) |
+| `GORELEASER_VERSION` | goreleaser | `goreleaser-action` in `ci.yml` / `release.yml` via `make -s print-GORELEASER_VERSION` |
+
+The Go toolchain is pinned in `.go-version` (read by `actions/setup-go` and
+`make doctor`). Renovate keeps all of these current through the custom
+managers in `.github/renovate-shared.json`.
 
 ## `make doctor`
 

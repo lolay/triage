@@ -105,7 +105,8 @@ make ci          # build + lint + test  (what CI runs)
 ```
 
 CI additionally runs `go mod verify` before `make ci` and `make vuln` after.
-golangci-lint is installed in CI from the pinned v2.14.0 script; locally it is
+golangci-lint is installed in CI by `make install-tools` at the Makefile's
+`GOLANGCI_LINT_VERSION` pin; locally it is
 invoked by `make lint` only when present on `PATH` (graceful skip otherwise).
 
 ## 6. Tagging convention

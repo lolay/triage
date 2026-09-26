@@ -28,13 +28,11 @@ jobs:
       - name: go mod verify
         run: go mod verify
 
-      # Install golangci-lint at the version pinned in GOLANGCI_LINT_VERSION
-      # (Makefile). Locally: `make init INSTALL_PACKAGES=1` installs latest.
+      # Install golangci-lint at GOLANGCI_LINT_VERSION (Makefile is the only
+      # pin). Locally: `make install-tools` (or `make init INSTALL_PACKAGES=1`).
       # `make lint` fails hard if the binary is missing.
       - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.14.0/install.sh \
-            | sh -s -- -b "$(go env GOPATH)/bin" v2.14.0
+        run: make install-tools
 
       - name: make ci
         run: make ci
@@ -76,9 +74,14 @@ jobs:
           cache: true
           cache-dependency-path: go.mod
 
+      # goreleaser is pinned by GORELEASER_VERSION in the Makefile.
+      - name: Read goreleaser pin
+        id: pins
+        run: echo "goreleaser=$(make -s print-GORELEASER_VERSION)" >> "$GITHUB_OUTPUT"
+
       - uses: goreleaser/goreleaser-action@v7
         with:
-          version: "~> v2"
+          version: ${{ steps.pins.outputs.goreleaser }}
           args: check
 
   action-dogfood:
@@ -95,9 +98,7 @@ jobs:
           cache-dependency-path: go.mod
 
       - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.14.0/install.sh \
-            | sh -s -- -b "$(go env GOPATH)/bin" v2.14.0
+        run: make install-tools
 
       - name: Run released triage-action
         uses: lolay/triage-action@v0

@@ -27,7 +27,21 @@ make doctor       # dogfood: triage checks its own environment (see triage.yaml)
 
 You need the toolchain triage checks for itself — run `make doctor` (or
 `triage` once built) and install whatever it flags. The Go version is
-pinned in `.go-version`.
+pinned in `.go-version`; `make install-tools` installs golangci-lint at the
+Makefile's `GOLANGCI_LINT_VERSION`.
+
+### Dependency updates
+
+Tool versions live in exactly one place each: Go in `.go-version`,
+golangci-lint and goreleaser in the `Makefile` (CI reads them from there).
+[Renovate](./renovate.json) keeps them — plus Go modules and GitHub Actions —
+current via the shared preset in
+[`.github/renovate-shared.json`](./.github/renovate-shared.json), which
+`lolay/triage-action` also extends: one grouped minor/patch PR a week
+(auto-merge once CI is green), majors individually after a 30-day cooldown, and
+a separate hand-reviewed PR for a new Go minor. The `go` directive in `go.mod`
+is the from-source consumer floor and is deliberately excluded — raise it by
+hand as policy work.
 
 ## Making changes
 

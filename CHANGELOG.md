@@ -16,6 +16,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`golang.org/x/vuln` v1.8.0).
 - CI: golangci-lint pinned to v2.14.0 (was v2.12.2), `actions/checkout` v7,
   and `actions/setup-go` v7.
+- Tool versions are pinned only in the `Makefile`: CI installs golangci-lint
+  via the new `make install-tools` (previously the version was duplicated in
+  `ci.yml` twice), and reads goreleaser from `GORELEASER_VERSION` (v2.18.2)
+  instead of the floating `~> v2`.
+- `make init INSTALL_PACKAGES=1` now installs the pinned golangci-lint instead
+  of `HEAD`/latest; `make lint` warns when the golangci-lint on `PATH` differs
+  from the pin.
+
+### Added
+- Renovate: `renovate.json` plus the shared preset
+  `.github/renovate-shared.json` (also used by `lolay/triage-action`) — weekly
+  grouped minor/patch PR, Go modules, GitHub Actions, and custom managers for
+  `.go-version` and the Makefile tool pins. The `go.mod` `go` directive stays
+  a manually raised floor.
+- `make install-tools` and `make print-VAR`.
 
 ## [0.4.0] - 2026-06-10
 
