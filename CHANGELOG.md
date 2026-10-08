@@ -16,6 +16,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`golang.org/x/vuln` v1.8.0).
 - CI: golangci-lint pinned to v2.14.0 (was v2.12.2), `actions/checkout` v7,
   and `actions/setup-go` v7.
+- CI now builds and tests natively on linux/arm64, windows/arm64, and
+  macOS (arm64) as well as linux/amd64 and windows/amd64, so every released
+  arm64 and darwin binary is exercised, not only cross-compiled.
 - Tool versions are pinned only in the `Makefile`: CI installs golangci-lint
   via the new `make install-tools` (previously the version was duplicated in
   `ci.yml` twice), and reads goreleaser from `GORELEASER_VERSION` (v2.18.2)
