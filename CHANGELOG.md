@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [0.4.1] - 2026-10-08
 
 ### Changed
 - Go toolchain pin (`.go-version`) bumped from 1.26.4 to 1.27.1; building
