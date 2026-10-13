@@ -22,6 +22,11 @@ Verified: `go test -race` on every package, golangci-lint v2.14.0 clean, end-to-
   mention it (Cursor rule regenerated), `personal-new-project` step 6 records floor and pin separately.
   `make -C agents validate test` passes (only the existing "no plugin version" warnings).
 
+## CI fix (pushed)
+
+- `.go-version` 1.27.1 -> 1.27.2: `make vuln` flagged 8 stdlib vulns in go1.27.1 (net/http, HTTP/2),
+  published after main last went green. Folded into this PR at Gary's call.
+
 ## Pending
 
 - m3 (nowline) waits on approval and, ideally, a triage release with `recommended_from`.

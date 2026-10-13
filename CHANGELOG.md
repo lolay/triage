@@ -16,8 +16,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   with. Older triage releases ignore the new keys and check the minimum only.
 
 ### Changed
+- Go toolchain pin (`.go-version`) bumped from 1.27.1 to 1.27.2 for the
+  `net/http` and HTTP/2 security fixes (GO-2026-6605, GO-2026-6603 and
+  others). The `go.mod` floor stays at 1.26.
 - `make doctor` now errors only below the `go.mod` floor (Go 1.26) and warns
-  below the `.go-version` pin (1.27.1), instead of erroring below the pin.
+  below the `.go-version` pin (1.27.2), instead of erroring below the pin.
 
 ### Fixed
 - A `group` (or `delegate`) whose only failures are `warn` checks now shows
