@@ -63,6 +63,13 @@ var e2eCases = []e2eCase{
 		wantExit: 0,
 	},
 	{
+		// recommended: fake-node meets its minimum but not the recommended pin
+		// (warn), fake-go meets both → exit 0 (warn does not fail by default).
+		name:     "recommended",
+		args:     []string{"--no-color"},
+		wantExit: 0,
+	},
+	{
 		// missing-tool: one tool present, one required tool missing → exit 1.
 		name:     "missing-tool",
 		args:     []string{"--no-color"},
@@ -225,6 +232,30 @@ func TestGolden(t *testing.T) {
 					assert.Equalf(t, want, got, "stdout mismatch at -j %d\n--- diff ---\n%s", jobs, lineDiff(got, want))
 				})
 			}
+		})
+	}
+}
+
+// TestRecommended_ExitCodes asserts that a below-recommended tool is an
+// ordinary warning to the exit-code ladder: pass by default, 1 under
+// --severity, fail under --strict.
+func TestRecommended_ExitCodes(t *testing.T) {
+	fixtureDir := filepath.Join("testdata", "recommended")
+	fakeBin, err := filepath.Abs(filepath.Join(fixtureDir, "bin"))
+	require.NoError(t, err)
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	for _, tc := range []struct {
+		flag string
+		want int
+	}{
+		{"--severity", 1},
+		{"--strict", 1},
+	} {
+		t.Run(tc.flag, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			got := cli.ExecuteWith([]string{fixtureDir, "--no-color", tc.flag}, &stdout, &stderr)
+			assert.Equalf(t, tc.want, got, "stdout:\n%s\nstderr:\n%s", stdout.String(), stderr.String())
 		})
 	}
 }

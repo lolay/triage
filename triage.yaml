@@ -21,8 +21,11 @@ base:
         hint: https://git-scm.com
   - group: Toolchain
     items:
+      # Minimum is the go.mod consumer floor; .go-version is what we build
+      # and release with, so falling behind it is a warning.
       - tool: go
-        version_from: .go-version
+        version: ">=1.26"
+        recommended_from: .go-version
         hint: https://go.dev/dl
 
 default:

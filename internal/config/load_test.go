@@ -253,6 +253,81 @@ func TestLoad_VersionFrom_Missing_Warns(t *testing.T) {
 	assert.NotEmpty(t, cfg.Warnings, "expected version_from warning")
 }
 
+// ── recommended / recommended_from ──────────────────────────────────────────
+
+func TestLoad_Recommended_Inline(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: node
+    version: ">=22"
+    recommended: " >=26.2.0 "
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	require.NotEmpty(t, cfg.Profiles["default"])
+	c := cfg.Profiles["default"][0]
+	assert.Equal(t, ">=22", c.Constraint)
+	assert.Equal(t, ">=26.2.0", c.RecommendedConstraint)
+	assert.Empty(t, cfg.Warnings)
+}
+
+func TestLoad_RecommendedFrom_PinFile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".nvmrc", "v26.2.0\n")
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: node
+    version: ">=22"
+    recommended_from: .nvmrc
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	require.NotEmpty(t, cfg.Profiles["default"])
+	c := cfg.Profiles["default"][0]
+	assert.Equal(t, ">=22", c.Constraint, "minimum unaffected by recommended_from")
+	assert.Equal(t, ">=26.2.0", c.RecommendedConstraint)
+}
+
+func TestLoad_RecommendedFrom_Missing_Warns(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: node
+    recommended_from: .nonexistent
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	require.Len(t, cfg.Warnings, 1)
+	assert.Contains(t, cfg.Warnings[0], "recommended_from")
+}
+
+func TestLoad_RecommendedAndRecommendedFrom_Warns(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".nvmrc", "26.2.0\n")
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: node
+    recommended: ">=24"
+    recommended_from: .nvmrc
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	require.Len(t, cfg.Warnings, 1)
+	assert.Contains(t, cfg.Warnings[0], "both 'recommended' and 'recommended_from'")
+	assert.Equal(t, ">=24", cfg.Profiles["default"][0].RecommendedConstraint, "recommended wins")
+}
+
+func TestLoad_VersionFrom_NotTreatedAsRecommended(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".nvmrc", "26.2.0\n")
+	writeFile(t, dir, "triage.yaml", `default:
+  - tool: node
+    version_from: .nvmrc
+`)
+	cfg, err := load(filepath.Join(dir, "triage.yaml"))
+	require.NoError(t, err, "load")
+	c := cfg.Profiles["default"][0]
+	assert.Equal(t, ">=26.2.0", c.Constraint, "version_from keeps its minimum meaning")
+	assert.Empty(t, c.RecommendedConstraint)
+}
+
 // ── validation errors ─────────────────────────────────────────────────────────
 
 func TestLoad_RootMustBeMapping(t *testing.T) {

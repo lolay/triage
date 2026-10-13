@@ -132,11 +132,14 @@ func defaultRunProbe(ctx context.Context, name string, args []string) (string, e
 	return string(out), err
 }
 
-// checkTool runs a single tool check: presence + optional version constraint.
+// checkTool runs a single tool check: presence + optional minimum and
+// recommended version constraints, from one probe.
 //
-// Lookup and probing are done via the injected opts functions so unit tests can
-// run without real executables.
-func checkTool(ctx context.Context, name, constraint, hint string, opts RunnerOpts) Result {
+// belowRecommended reports a tool that meets the minimum (or has none) but
+// falls short of recommended; the caller reports it at warn rather than the
+// check's own severity. Lookup and probing are done via the injected opts
+// functions so unit tests can run without real executables.
+func checkTool(ctx context.Context, name, constraint, recommended, hint string, opts RunnerOpts) (res Result, belowRecommended bool) {
 	lookPath := opts.LookPath
 	if lookPath == nil {
 		lookPath = defaultLookPath
@@ -157,27 +160,30 @@ func checkTool(ctx context.Context, name, constraint, hint string, opts RunnerOp
 			Severity: SeverityError,
 			Pass:     false,
 			Message:  msg,
-		}
+		}, false
 	}
 
-	if constraint == "" {
+	if constraint == "" && recommended == "" {
 		return Result{
 			Label:    name,
 			Severity: SeverityError,
 			Pass:     true,
 			Message:  name,
-		}
+		}, false
 	}
 
-	parsed, err := semver.NewConstraint(constraint)
+	minimum, err := parseConstraint(name, constraint)
 	if err != nil {
-		return Result{
-			Label:    name,
-			Severity: SeverityError,
-			Pass:     false,
-			Message:  fmt.Sprintf("%s: invalid constraint %q: %v", name, constraint, err),
-		}
+		return Result{Label: name, Severity: SeverityError, Message: err.Error()}, false
 	}
+	target, err := parseConstraint(name, recommended)
+	if err != nil {
+		return Result{Label: name, Severity: SeverityError, Message: err.Error()}, false
+	}
+
+	// With only a recommended range, a version we can't read is a warning: the
+	// tool is present and nothing required is known to be unmet.
+	unverifiableRecommended := minimum == nil
 
 	override, hasOverride := probeOverrides[name]
 	probeArgs := []string{"--version"}
@@ -212,7 +218,7 @@ func checkTool(ctx context.Context, name, constraint, hint string, opts RunnerOp
 			Severity: SeverityError,
 			Pass:     false,
 			Message:  msg,
-		}
+		}, unverifiableRecommended
 	}
 
 	// Strip leading 'v' for Masterminds/semver.
@@ -225,26 +231,70 @@ func checkTool(ctx context.Context, name, constraint, hint string, opts RunnerOp
 			Severity: SeverityError,
 			Pass:     false,
 			Message:  msg,
-		}
+		}, unverifiableRecommended
 	}
 
-	if parsed.Check(ver) {
+	if minimum != nil && !minimum.Check(ver) {
+		msg := fmt.Sprintf("%s %s — need %s", name, cleanVer, constraint)
+		if hint != "" {
+			msg += " — " + hint
+		}
 		return Result{
 			Label:    name,
 			Severity: SeverityError,
-			Pass:     true,
-			Message:  fmt.Sprintf("%s %s (%s)", name, cleanVer, constraint),
-		}
+			Pass:     false,
+			Message:  msg,
+		}, false
 	}
 
-	msg := fmt.Sprintf("%s %s — need %s", name, cleanVer, constraint)
-	if hint != "" {
-		msg += " — " + hint
+	if target != nil && !target.Check(ver) {
+		// No " — " before the hint: the board reads the text after the last
+		// one as the remediation command.
+		msg := fmt.Sprintf("%s %s, recommended %s", name, cleanVer, recommended)
+		if constraint != "" {
+			msg += fmt.Sprintf(" (minimum %s met)", constraint)
+		}
+		if hint != "" {
+			msg += " — " + hint
+		}
+		return Result{
+			Label:    name,
+			Severity: SeverityWarn,
+			Pass:     false,
+			Message:  msg,
+		}, true
 	}
+
 	return Result{
 		Label:    name,
 		Severity: SeverityError,
-		Pass:     false,
-		Message:  msg,
+		Pass:     true,
+		Message:  fmt.Sprintf("%s %s (%s)", name, cleanVer, describeRanges(constraint, recommended)),
+	}, false
+}
+
+// parseConstraint parses an optional npm-style range; empty means no
+// constraint and yields nil.
+func parseConstraint(name, constraint string) (*semver.Constraints, error) {
+	if constraint == "" {
+		return nil, nil
+	}
+	parsed, err := semver.NewConstraint(constraint)
+	if err != nil {
+		return nil, fmt.Errorf("%s: invalid constraint %q: %w", name, constraint, err)
+	}
+	return parsed, nil
+}
+
+// describeRanges renders the ranges a passing tool satisfied, e.g.
+// ">=22, recommended >=26.2.0".
+func describeRanges(constraint, recommended string) string {
+	switch {
+	case recommended == "":
+		return constraint
+	case constraint == "":
+		return "recommended " + recommended
+	default:
+		return constraint + ", recommended " + recommended
 	}
 }

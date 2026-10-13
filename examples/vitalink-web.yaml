@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=../schema/triage.schema.json
 # vitalink-web — Node/pnpm web app (fictional).
 #
-# Exercises: version_from (.nvmrc), one_of (pnpm OR npm), severity: warn, and
-# firebase + gcloud auth/session checks in the release profile.
+# Exercises: version minimum + recommended_from (.nvmrc), one_of (pnpm OR npm),
+# severity: warn, and firebase + gcloud auth/session checks in the release
+# profile.
 
 include:
   - vitalink-base.yaml
@@ -10,8 +11,10 @@ include:
 default:
   - group: Toolchain
     items:
+      # Supports Node 22 (warn below .nvmrc), errors below it.
       - tool: node
-        version_from: .nvmrc
+        version: ">=22"
+        recommended_from: .nvmrc
         hint: https://nodejs.org (see .nvmrc)
       - one_of: [pnpm, npm]
         hint: corepack enable && corepack prepare pnpm@latest --activate

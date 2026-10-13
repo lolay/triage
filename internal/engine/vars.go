@@ -93,6 +93,8 @@ func expandCheck(c config.Check, vars map[string]string) (config.Check, error) {
 	out.Value = expandField(c.Value)
 	out.Version = expandField(c.Version)
 	out.Constraint = expandField(c.Constraint)
+	out.Recommended = expandField(c.Recommended)
+	out.RecommendedConstraint = expandField(c.RecommendedConstraint)
 	out.Hint = expandField(c.Hint)
 	out.Dir = expandField(c.Dir)
 	out.Label = expandField(c.Label)
