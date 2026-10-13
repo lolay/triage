@@ -33,7 +33,9 @@ force-push last.
 `lolay/triage-action` runs only after the CLI release is fully green.
 **Coordinated semver:** `triage-action` tracks the CLI — cut the action tag
 (`vX.Y.Z`, floating `vX.Y` / `vX`) only after `lolay/triage` release CI is green,
-since the action installs the matching CLI release asset.
+since the action installs the matching CLI release asset. The action's `VERSION`
+file must already equal the new version on the commit being tagged
+([`action.md`](action.md) §6).
 
 ## Versioning
 
