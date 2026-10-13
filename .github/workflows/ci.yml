@@ -130,4 +130,7 @@ jobs:
         uses: lolay/triage-action@v0
         with:
           profile: ci
+          # setup-go installs .go-version, so a warning here (go behind the
+          # recommended target, a tool gone missing) is a real CI regression.
+          strict: true
           json: true
