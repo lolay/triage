@@ -586,22 +586,27 @@ func resolveSeverity(c config.Check) Severity {
 }
 
 // worstStatus returns the aggregate pass/severity across a slice of results.
-// A group header passes only when all children pass; severity reflects the
-// worst-failing (or worst-overall) child severity.
+// A group header passes only when all children pass. A failing header takes
+// the worst severity among the failing children only, so a passing required
+// check next to a failing warn check yields a warning, not an error. A passing
+// header takes the worst severity overall.
 func worstStatus(results []Result) (Severity, bool) {
-	sev := SeverityInfo // start at least-severe; tightened by each child
+	// Start at least-severe; tightened by each child. Lower numeric value =
+	// worse (Error=0, Warn=1, Info=2).
+	worstAll, worstFailing := SeverityInfo, SeverityInfo
 	allPass := true
 	for _, r := range results {
 		if r.Kind == KindHeader || r.Kind == KindDelegate {
 			continue // headers/delegate summaries aggregate children; don't double-count
 		}
+		worstAll = min(worstAll, r.Severity)
 		if !r.Pass {
 			allPass = false
-		}
-		// Lower numeric value = worse (Error=0, Warn=1, Info=2).
-		if r.Severity < sev {
-			sev = r.Severity
+			worstFailing = min(worstFailing, r.Severity)
 		}
 	}
-	return sev, allPass
+	if allPass {
+		return worstAll, true
+	}
+	return worstFailing, false
 }

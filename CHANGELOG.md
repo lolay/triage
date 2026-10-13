@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- A `group` (or `delegate`) whose only failures are `warn` checks now shows
+  `[!]` and passes, instead of `[✗]` and exit `1` whenever a sibling
+  `error` check passed. The header now takes the worst severity among its
+  failing children, not among all of them.
+
 ## [0.4.1] - 2026-10-08
 
 ### Changed

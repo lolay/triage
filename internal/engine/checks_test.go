@@ -327,3 +327,30 @@ func TestCurrentPlatform_override(t *testing.T) {
 	t.Setenv("TRIAGE_TEST_GOOS", "windows")
 	assert.Equal(t, "windows", CurrentPlatform())
 }
+
+func TestWorstStatus_FailingWarnBesidePassingError(t *testing.T) {
+	sev, pass := worstStatus([]Result{
+		{Severity: SeverityError, Pass: true},
+		{Severity: SeverityWarn, Pass: false},
+	})
+	assert.False(t, pass)
+	assert.Equal(t, SeverityWarn, sev, "a passing required check must not make the header an error")
+}
+
+func TestWorstStatus_FailingErrorWins(t *testing.T) {
+	sev, pass := worstStatus([]Result{
+		{Severity: SeverityWarn, Pass: false},
+		{Severity: SeverityError, Pass: false},
+	})
+	assert.False(t, pass)
+	assert.Equal(t, SeverityError, sev)
+}
+
+func TestWorstStatus_AllPass(t *testing.T) {
+	sev, pass := worstStatus([]Result{
+		{Severity: SeverityInfo, Pass: true},
+		{Severity: SeverityError, Pass: true},
+	})
+	assert.True(t, pass)
+	assert.Equal(t, SeverityError, sev)
+}
