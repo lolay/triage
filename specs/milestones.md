@@ -76,7 +76,7 @@ and action `v0.3.1` on `lolay/triage-action` in the same release beat). Document
 the pairing in both READMEs.
 
 **Default CLI pin:** the committed **`VERSION` file** at the action root (bumped
-by Renovate before the action is tagged; the release workflow only verifies it)
+by Renovate; the release workflow tags the commit that carries it, never after)
 pins the CLI version — so floating tags resolve deterministically and
 tokenlessly (download `triage_<ver>_…` from `lolay/triage` releases). Optional
 input **`version`** overrides it. See [`action.md`](action.md) §4 for the full

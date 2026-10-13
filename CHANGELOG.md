@@ -10,9 +10,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - `specs/action.md` (§4, §6), `specs/milestones.md` and `specs/releasing.md`
   no longer say the `lolay/triage-action` release workflow writes `VERSION` at
-  tag time. Renovate bumps it before the action is tagged and the workflow
-  only verifies it, since a bump committed after the exact tag never reaches
-  that tag (action `v0.4.0` installs triage 0.3.0 for this reason).
+  tag time, since a bump committed after the exact tag never reaches that tag
+  (action `v0.4.0` installs triage 0.3.0 for this reason). They now describe
+  the automatic flow: Renovate's `triage CLI` PR bumps `VERSION` and
+  automerges on green CI, and the action's release workflow tags that commit.
 
 ## [0.5.0] - 2026-10-13
 

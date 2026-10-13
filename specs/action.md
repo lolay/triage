@@ -120,8 +120,8 @@ Resolution order (first match wins):
 2. **`VERSION` file** at the action repo root — bumped by Renovate's
    `triage CLI` PR *before* the action release is tagged, so the exact tag
    `v0.3.1` and the floating `v0.3` / `v0` promoted to it all carry a `VERSION`
-   of `0.3.1`. The triage-action release workflow verifies `VERSION` against
-   the tag and never writes it ([§6](#6-coordinated-versioning--floating-tags)).
+   of `0.3.1`. The triage-action release workflow tags the commit that carries
+   the bump and never writes `VERSION` ([§6](#6-coordinated-versioning--floating-tags)).
    **This is the normal, deterministic path** for every released tag (exact,
    minor, or major) and for dogfood (`uses: ./` checks out the file).
 3. Otherwise **fail fast** with a clear message (set the `version` input or
@@ -201,16 +201,21 @@ Floating tags on `lolay/triage-action` (GitHub does not semver-resolve refs):
 **`VERSION` is set before the tag, never after it.** An exact tag is immutable,
 so a `VERSION` committed after it reaches `vX.Y` / `vX` but never `vX.Y.Z`.
 That happened to action `v0.4.0`: it carries `VERSION` 0.3.0 and installs
-triage 0.3.0, while `v0.4` installs 0.4.0. The order is:
+triage 0.3.0, while `v0.4` installs 0.4.0. So the action releases itself from
+the commit that carries the bump, with no human step:
 
-1. Release the CLI on `lolay/triage` and wait for its release CI to go green.
-2. On `lolay/triage-action`, merge Renovate's `triage CLI` PR, which bumps
-   `VERSION` to `X.Y.Z`.
-3. `make tag VERSION=X.Y.Z CONFIRM_TAG=1` there. It refuses unless `VERSION` at
-   `HEAD` already equals `X.Y.Z`.
-4. The triage-action release workflow fails the release if `VERSION` at the
-   tagged commit differs from the tag. Otherwise it promotes `vX.Y` **and** `vX`
-   to that commit, mirroring the CLI's `promote-floating-tags` ordering.
+1. The CLI release on `lolay/triage` publishes `vX.Y.Z`.
+2. Renovate opens the `triage CLI` PR on `lolay/triage-action` (at any time,
+   no cooldown), bumping `VERSION` to `X.Y.Z`, and automerges it once CI passes.
+3. When `ci` passes on the action's `main` and `vX.Y.Z` doesn't exist yet, the
+   action's release workflow cuts the CHANGELOG section, commits, tags that
+   commit `vX.Y.Z`, and pushes `main` and the tag atomically.
+4. It then promotes `vX.Y` **and** `vX` to that commit, mirroring the CLI's
+   `promote-floating-tags` ordering.
+
+Manual fallback: `make tag VERSION=X.Y.Z CONFIRM_TAG=1` in the action repo
+refuses unless `VERSION` at `HEAD` already equals `X.Y.Z`, and the release
+workflow's tag-push path fails if `VERSION` at the tagged commit differs.
 
 ---
 
