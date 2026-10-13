@@ -15,6 +15,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   support an older runtime while nudging contributors to the one it builds
   with. Older triage releases ignore the new keys and check the minimum only.
 
+### Changed
+- `make doctor` now errors only below the `go.mod` floor (Go 1.26) and warns
+  below the `.go-version` pin (1.27.1), instead of erroring below the pin.
+
 ### Fixed
 - A `group` (or `delegate`) whose only failures are `warn` checks now shows
   `[!]` and passes, instead of `[✗]` and exit `1` whenever a sibling
