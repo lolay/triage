@@ -163,7 +163,7 @@ func (r *Runner) checkCommand(ctx context.Context, c config.Check) (res Result) 
 		if c.Hint != "" {
 			msg += " — " + c.Hint
 		}
-		return Result{Pass: false, Message: msg, Output: stdout}
+		return Result{Pass: false, Message: msg, Hint: c.Hint, Output: stdout}
 	}
 
 	wantExit := 0
@@ -182,7 +182,7 @@ func (r *Runner) checkCommand(ctx context.Context, c config.Check) (res Result) 
 			if c.Hint != "" {
 				msg += " — " + c.Hint
 			}
-			return Result{Pass: false, Message: msg, Output: stdout}
+			return Result{Pass: false, Message: msg, Hint: c.Hint, Output: stdout}
 		}
 		if !hasAssertion {
 			return Result{Pass: true, Message: label}
@@ -207,7 +207,7 @@ func (r *Runner) checkCommand(ctx context.Context, c config.Check) (res Result) 
 		if c.Hint != "" {
 			msg += " — " + c.Hint
 		}
-		return Result{Pass: false, Message: msg, Output: stdout}
+		return Result{Pass: false, Message: msg, Hint: c.Hint, Output: stdout}
 	}
 
 	if c.Matches != "" {
@@ -226,7 +226,7 @@ func (r *Runner) checkCommand(ctx context.Context, c config.Check) (res Result) 
 			if c.Hint != "" {
 				msg += " — " + c.Hint
 			}
-			return Result{Pass: false, Message: msg, Output: stdout}
+			return Result{Pass: false, Message: msg, Hint: c.Hint, Output: stdout}
 		}
 	}
 

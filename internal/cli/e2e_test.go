@@ -70,6 +70,13 @@ var e2eCases = []e2eCase{
 		wantExit: 0,
 	},
 	{
+		// no-hint: a tool below its minimum with no hint, next to a missing tool
+		// that has one. The "To fix, run:" block lists only the real hint.
+		name:     "no-hint",
+		args:     []string{"--no-color"},
+		wantExit: 1,
+	},
+	{
 		// missing-tool: one tool present, one required tool missing → exit 1.
 		name:     "missing-tool",
 		args:     []string{"--no-color"},

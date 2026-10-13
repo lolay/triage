@@ -94,7 +94,7 @@ func TestTTYSinkEnd(t *testing.T) {
 
 	results := []engine.Result{
 		{Label: "git", Kind: engine.KindLeaf, Pass: true},
-		{Label: "go", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "go not found — brew install go"},
+		{Label: "go", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "go not found — brew install go", Hint: "brew install go"},
 	}
 
 	var buf bytes.Buffer

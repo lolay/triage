@@ -36,7 +36,7 @@ func checkEnv(name string, unset bool, matches, hint string, lookupEnv func(stri
 		if hint != "" {
 			msg += " — " + hint
 		}
-		return Result{Pass: false, Message: msg}
+		return Result{Pass: false, Message: msg, Hint: hint}
 	}
 
 	if matches != "" {
@@ -52,7 +52,7 @@ func checkEnv(name string, unset bool, matches, hint string, lookupEnv func(stri
 			if hint != "" {
 				msg += " — " + hint
 			}
-			return Result{Pass: false, Message: msg}
+			return Result{Pass: false, Message: msg, Hint: hint}
 		}
 	}
 
@@ -79,7 +79,7 @@ func checkPath(pattern, effectiveBase, hint string) Result {
 		if hint != "" {
 			msg += " — " + hint
 		}
-		return Result{Pass: false, Message: msg}
+		return Result{Pass: false, Message: msg, Hint: hint}
 	}
 	return Result{Pass: true, Message: pattern}
 }

@@ -1,0 +1,7 @@
+default:
+  # Below the minimum, no hint: nothing to list under "To fix, run:".
+  - tool: fake-node
+    version: ">=22"
+  # Missing, with a hint: the only remediation line.
+  - tool: fake-missing
+    hint: brew install fake-missing

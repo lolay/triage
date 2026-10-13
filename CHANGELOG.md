@@ -27,6 +27,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `[!]` and passes, instead of `[✗]` and exit `1` whenever a sibling
   `error` check passed. The header now takes the worst severity among its
   failing children, not among all of them.
+- A `tool` check below its `version` minimum with no `hint` no longer prints
+  the `need >=22` clause as a fix under `To fix, run:`. The board now lists
+  only configured `hint:` values, which `engine.Result` carries as their own
+  field instead of the board re-parsing the text after the last ` — ` in the
+  message. Board lines and `--json` output are unchanged.
 
 ## [0.4.1] - 2026-10-08
 

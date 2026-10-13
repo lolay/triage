@@ -58,6 +58,7 @@ func TestCheckTool_Missing(t *testing.T) {
 	assert.False(t, r.Pass, "want fail, got pass")
 	assert.Contains(t, r.Message, "not found")
 	assert.Contains(t, r.Message, "install it", "hint missing from message")
+	assert.Equal(t, "install it", r.Hint)
 }
 
 func TestCheckTool_Missing_NoHint(t *testing.T) {
@@ -65,6 +66,7 @@ func TestCheckTool_Missing_NoHint(t *testing.T) {
 		opts(nil, nil))
 	assert.False(t, r.Pass, "want fail")
 	assert.NotContains(t, r.Message, " — ", "no hint: message should not contain ' — '")
+	assert.Empty(t, r.Hint)
 }
 
 func TestCheckTool_VersionPass(t *testing.T) {
@@ -115,6 +117,15 @@ func TestCheckTool_Recommended_BelowMinimum(t *testing.T) {
 	assert.False(t, r.Pass, "want fail: 21.0.0 < 22")
 	assert.False(t, below, "a failed minimum is not a recommended shortfall")
 	assert.Contains(t, r.Message, "need >=22")
+	assert.Equal(t, "nvm install", r.Hint)
+}
+
+func TestCheckTool_BelowMinimum_NoHint(t *testing.T) {
+	r, _ := checkTool(t.Context(), "node", ">=22", "", "",
+		opts([]string{"node"}, map[string]string{"node": "v21.0.0"}))
+	assert.False(t, r.Pass)
+	assert.Equal(t, "node 21.0.0 — need >=22", r.Message)
+	assert.Empty(t, r.Hint, "the 'need' clause is a diagnosis, not a remediation")
 }
 
 func TestCheckTool_Recommended_BetweenMinimumAndRecommended(t *testing.T) {
@@ -130,6 +141,7 @@ func TestCheckTool_Recommended_NoHint_NoRemediationSeparator(t *testing.T) {
 		opts([]string{"node"}, map[string]string{"node": "v22.11.0"}))
 	assert.True(t, below)
 	assert.NotContains(t, r.Message, " — ", "board would read the text after ' — ' as a fix command")
+	assert.Empty(t, r.Hint)
 }
 
 func TestCheckTool_Recommended_Met(t *testing.T) {
