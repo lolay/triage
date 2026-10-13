@@ -160,6 +160,7 @@ func checkTool(ctx context.Context, name, constraint, recommended, hint string, 
 			Severity: SeverityError,
 			Pass:     false,
 			Message:  msg,
+			Hint:     hint,
 		}, false
 	}
 
@@ -218,6 +219,7 @@ func checkTool(ctx context.Context, name, constraint, recommended, hint string, 
 			Severity: SeverityError,
 			Pass:     false,
 			Message:  msg,
+			Hint:     hint,
 		}, unverifiableRecommended
 	}
 
@@ -244,12 +246,11 @@ func checkTool(ctx context.Context, name, constraint, recommended, hint string, 
 			Severity: SeverityError,
 			Pass:     false,
 			Message:  msg,
+			Hint:     hint,
 		}, false
 	}
 
 	if target != nil && !target.Check(ver) {
-		// No " — " before the hint: the board reads the text after the last
-		// one as the remediation command.
 		msg := fmt.Sprintf("%s %s, recommended %s", name, cleanVer, recommended)
 		if constraint != "" {
 			msg += fmt.Sprintf(" (minimum %s met)", constraint)
@@ -262,6 +263,7 @@ func checkTool(ctx context.Context, name, constraint, recommended, hint string, 
 			Severity: SeverityWarn,
 			Pass:     false,
 			Message:  msg,
+			Hint:     hint,
 		}, true
 	}
 

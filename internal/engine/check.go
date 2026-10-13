@@ -28,6 +28,9 @@ const (
 //
 // Fields are ordered for struct alignment, not by topic. Notable ones:
 //   - Message: pass = found detail; fail = what went wrong + optional hint.
+//   - Hint: the check's configured remediation, verbatim, set on failure only
+//     when the check declared one. The board's "To fix, run:" block lists these
+//     rather than parsing Message. Not part of --json.
 //   - Output: bounded excerpt of the subprocess combined output (capped at
 //     captureCap bytes), set on failure for --verbose replay and --json detail
 //     enrichment. Empty for instant checks (env, path, tool presence).
@@ -39,6 +42,7 @@ type Result struct {
 	cmdLog   *cmdLogEntry
 	Label    string
 	Message  string
+	Hint     string
 	Output   string
 	Severity Severity
 	Depth    int

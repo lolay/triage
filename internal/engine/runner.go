@@ -415,6 +415,7 @@ func (r *Runner) checkOneOf(ctx context.Context, c config.Check, depth int) Resu
 		Severity: sev,
 		Pass:     false,
 		Message:  msg,
+		Hint:     c.Hint,
 		Depth:    depth,
 		Kind:     KindLeaf,
 	}

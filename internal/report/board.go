@@ -70,7 +70,7 @@ func printRemediation(w io.Writer, results []engine.Result, _ BoardOpts) {
 		if r.Pass || r.Severity == engine.SeverityInfo {
 			continue
 		}
-		hint := extractHint(r.Message)
+		hint := strings.TrimSpace(r.Hint)
 		if hint == "" || seen[hint] {
 			continue
 		}
@@ -84,16 +84,6 @@ func printRemediation(w io.Writer, results []engine.Result, _ BoardOpts) {
 	for _, h := range hints {
 		_, _ = fmt.Fprintf(w, "    %s\n", h)
 	}
-}
-
-// extractHint pulls the hint portion from a failure message ("... — <hint>").
-func extractHint(msg string) string {
-	const sep = " — "
-	idx := strings.LastIndex(msg, sep)
-	if idx < 0 {
-		return ""
-	}
-	return strings.TrimSpace(msg[idx+len(sep):])
 }
 
 // glyphFor returns the bracketed status glyph for a result, optionally colored.

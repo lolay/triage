@@ -10,28 +10,6 @@ import (
 	"github.com/lolay/triage/internal/engine"
 )
 
-func TestExtractHint(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		msg  string
-		want string
-	}{
-		{name: "no separator", msg: "tool not found", want: ""},
-		{name: "single separator", msg: "tool not found — brew install foo", want: "brew install foo"},
-		{name: "multiple separators uses last", msg: "a — b — c", want: "c"},
-		{name: "trims whitespace", msg: "fail —   brew install foo  ", want: "brew install foo"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tc.want, extractHint(tc.msg))
-		})
-	}
-}
-
 func TestPlural(t *testing.T) {
 	t.Parallel()
 
@@ -173,17 +151,31 @@ func TestPrintRemediation(t *testing.T) {
 			want: "",
 		},
 		{
+			name: "message separator without hint is not a fix",
+			results: []engine.Result{
+				{Label: "node", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "node 21.0.0 — need >=22"},
+			},
+			want: "",
+		},
+		{
+			name: "hint containing separator kept whole",
+			results: []engine.Result{
+				{Label: "x", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "x missing — a — b", Hint: "a — b"},
+			},
+			want: "To fix, run:\n    a — b\n",
+		},
+		{
 			name: "one hint",
 			results: []engine.Result{
-				{Label: "go", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "go not found — brew install go"},
+				{Label: "go", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "go not found — brew install go", Hint: "brew install go"},
 			},
 			want: "To fix, run:\n    brew install go\n",
 		},
 		{
 			name: "dedupe hints",
 			results: []engine.Result{
-				{Label: "a", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "a missing — brew install go"},
-				{Label: "b", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "b missing — brew install go"},
+				{Label: "a", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "a missing — brew install go", Hint: "brew install go"},
+				{Label: "b", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "b missing — brew install go", Hint: "brew install go"},
 			},
 			want: "To fix, run:\n    brew install go\n",
 		},
@@ -192,8 +184,8 @@ func TestPrintRemediation(t *testing.T) {
 			results: []engine.Result{
 				{Label: "Core", Kind: engine.KindHeader, Pass: false},
 				{Label: "ok", Kind: engine.KindLeaf, Pass: true},
-				{Label: "info", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityInfo, Message: "skip — hint"},
-				{Label: "fail", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "missing — brew install gh"},
+				{Label: "info", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityInfo, Message: "skip — hint", Hint: "hint"},
+				{Label: "fail", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "missing — brew install gh", Hint: "brew install gh"},
 			},
 			want: "To fix, run:\n    brew install gh\n",
 		},
@@ -272,7 +264,7 @@ func TestBoard(t *testing.T) {
 		t.Parallel()
 		results := []engine.Result{
 			{Label: "git", Kind: engine.KindLeaf, Pass: true},
-			{Label: "go", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "go not found — brew install go"},
+			{Label: "go", Kind: engine.KindLeaf, Pass: false, Severity: engine.SeverityError, Message: "go not found — brew install go", Hint: "brew install go"},
 		}
 		var buf bytes.Buffer
 		Board(&buf, results, opts)

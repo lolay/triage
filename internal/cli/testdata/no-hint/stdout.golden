@@ -1,0 +1,8 @@
+triage (profile: default)
+
+[✗] fake-node — fake-node 21.0.0 — need >=22
+[✗] fake-missing — fake-missing not found — brew install fake-missing
+
+✗ 2 errors, 0 warnings, 0 ok — fix the [✗] items above
+To fix, run:
+    brew install fake-missing
