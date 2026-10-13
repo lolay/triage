@@ -290,14 +290,18 @@ func (r *Runner) runCheck(ctx context.Context, c config.Check, depth int) []Resu
 		// holds a token. The wrapper is a no-op in the sequential path.
 		o := r.opts
 		o.RunProbe = r.wrapProbe(o.RunProbe)
-		res := checkTool(ctx, c.Value, c.Constraint, c.Hint, o)
+		res, belowRecommended := checkTool(ctx, c.Value, c.Constraint, c.RecommendedConstraint, c.Hint, o)
 		res.Severity = sev
+		if belowRecommended {
+			// Falling short of recommended is at most a warning; an info
+			// check stays info.
+			res.Severity = max(sev, SeverityWarn)
+		}
 		res.Depth = depth
 		res.Kind = KindLeaf
-		// Build a friendlier label that includes version detail on pass.
-		if res.Pass && c.Constraint != "" {
-			res.Label = fmt.Sprintf("%s %s", c.Value, res.Message)
-			// Message carries "name version (constraint)" already; use it as label
+		// Message carries "name version (ranges)" on a versioned pass; use it
+		// as the label.
+		if res.Pass && (c.Constraint != "" || c.RecommendedConstraint != "") {
 			res.Label = res.Message
 		} else {
 			res.Label = c.Value

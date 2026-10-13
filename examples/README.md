@@ -30,7 +30,7 @@ sections appear in `otoscope-mac.yaml`.
 |---|---|---|
 | [`vitalink-base.yaml`](vitalink-base.yaml) | shared base | the building block for cross-file `include` |
 | [`vitalink-api.yaml`](vitalink-api.yaml) | Go service | `include`, `tool`, `version_from` (`.go-version`), `extends`, **gcloud auth/session** |
-| [`vitalink-web.yaml`](vitalink-web.yaml) | Node/pnpm app | `version_from` (`.nvmrc`), `one_of` (pnpm/npm), `severity: warn`, **firebase + gcloud auth/session** |
+| [`vitalink-web.yaml`](vitalink-web.yaml) | Node/pnpm app | `version` minimum + `recommended_from` (`.nvmrc`), `one_of` (pnpm/npm), `severity: warn`, **firebase + gcloud auth/session** |
 | [`vitalink-infra.yaml`](vitalink-infra.yaml) | Terraform | `version_from` (`.terraform-version`), empty release profile |
 | [`otoscope-mac.yaml`](otoscope-mac.yaml) | macOS Swift app | structural **`group`+`items:`**, `command`+`platform`, `path`, heterogeneous `one_of`, keychain/xcrun/Xcode, `warn` |
 | [`vitalink-workspace.yaml`](vitalink-workspace.yaml) / [`vitalink-workspace/`](vitalink-workspace/) | estate root | mixed layout: structural `Workspace` group + top-level `delegate` checks (nested tree output); runnable with path-only member checks |

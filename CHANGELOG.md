@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- `recommended` / `recommended_from` on `tool` checks: a soft version target
+  next to the `version` / `version_from` minimum. A tool that meets the
+  minimum but not the target is a `[!]` warning on the same board line
+  (`node 22.11.0, recommended >=26.2.0 (minimum >=22 met)`), so a project can
+  support an older runtime while nudging contributors to the one it builds
+  with. Older triage releases ignore the new keys and check the minimum only.
+
 ### Fixed
 - A `group` (or `delegate`) whose only failures are `warn` checks now shows
   `[!]` and passes, instead of `[✗]` and exit `1` whenever a sibling

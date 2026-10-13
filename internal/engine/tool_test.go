@@ -46,14 +46,14 @@ func opts(found []string, probeOutputs map[string]string) RunnerOpts {
 // ── tool check ───────────────────────────────────────────────────────────────
 
 func TestCheckTool_Present_NoConstraint(t *testing.T) {
-	r := checkTool(t.Context(), "git", "", "https://git-scm.com",
+	r, _ := checkTool(t.Context(), "git", "", "", "https://git-scm.com",
 		opts([]string{"git"}, nil))
 	assert.True(t, r.Pass, "want pass, got fail: %s", r.Message)
 	assert.Equal(t, "git", r.Label)
 }
 
 func TestCheckTool_Missing(t *testing.T) {
-	r := checkTool(t.Context(), "notfound", "", "install it",
+	r, _ := checkTool(t.Context(), "notfound", "", "", "install it",
 		opts(nil, nil))
 	assert.False(t, r.Pass, "want fail, got pass")
 	assert.Contains(t, r.Message, "not found")
@@ -61,21 +61,21 @@ func TestCheckTool_Missing(t *testing.T) {
 }
 
 func TestCheckTool_Missing_NoHint(t *testing.T) {
-	r := checkTool(t.Context(), "notfound", "", "",
+	r, _ := checkTool(t.Context(), "notfound", "", "", "",
 		opts(nil, nil))
 	assert.False(t, r.Pass, "want fail")
 	assert.NotContains(t, r.Message, " — ", "no hint: message should not contain ' — '")
 }
 
 func TestCheckTool_VersionPass(t *testing.T) {
-	r := checkTool(t.Context(), "mytool", ">=1.2.0", "upgrade mytool",
+	r, _ := checkTool(t.Context(), "mytool", ">=1.2.0", "", "upgrade mytool",
 		opts([]string{"mytool"}, map[string]string{"mytool": "mytool version 1.3.0"}))
 	assert.True(t, r.Pass, "want pass, got: %s", r.Message)
 	assert.Contains(t, r.Message, "1.3.0", "message should contain found version")
 }
 
 func TestCheckTool_VersionFail(t *testing.T) {
-	r := checkTool(t.Context(), "mytool", ">=2.0.0", "upgrade mytool",
+	r, _ := checkTool(t.Context(), "mytool", ">=2.0.0", "", "upgrade mytool",
 		opts([]string{"mytool"}, map[string]string{"mytool": "mytool version 1.9.0"}))
 	assert.False(t, r.Pass, "want fail (version too old)")
 	assert.Contains(t, r.Message, "1.9.0", "should mention found version")
@@ -83,28 +83,140 @@ func TestCheckTool_VersionFail(t *testing.T) {
 }
 
 func TestCheckTool_GoVersionOverride(t *testing.T) {
-	r := checkTool(t.Context(), "go", ">=1.21.0", "",
+	r, _ := checkTool(t.Context(), "go", ">=1.21.0", "", "",
 		opts([]string{"go"}, map[string]string{"go": "go version go1.26.3 linux/amd64"}))
 	assert.True(t, r.Pass, "go version override: want pass, got: %s", r.Message)
 	assert.Contains(t, r.Message, "1.26.3", "message should contain 1.26.3")
 }
 
 func TestCheckTool_GoVersionFail(t *testing.T) {
-	r := checkTool(t.Context(), "go", ">=1.30.0", "install newer go",
+	r, _ := checkTool(t.Context(), "go", ">=1.30.0", "", "install newer go",
 		opts([]string{"go"}, map[string]string{"go": "go version go1.26.3 linux/amd64"}))
 	assert.False(t, r.Pass, "want fail: 1.26.3 < 1.30.0")
 }
 
 func TestCheckTool_UnparseableVersion(t *testing.T) {
-	r := checkTool(t.Context(), "mytool", ">=1.0.0", "",
+	r, _ := checkTool(t.Context(), "mytool", ">=1.0.0", "", "",
 		opts([]string{"mytool"}, map[string]string{"mytool": "no version info here"}))
 	assert.False(t, r.Pass, "want fail when version cannot be parsed")
 }
 
 func TestCheckTool_NodeLeadingV(t *testing.T) {
-	r := checkTool(t.Context(), "node", ">=18.0.0", "",
+	r, _ := checkTool(t.Context(), "node", ">=18.0.0", "", "",
 		opts([]string{"node"}, map[string]string{"node": "v20.11.0"}))
 	assert.True(t, r.Pass, "node v20.11.0 should satisfy >=18.0.0: %s", r.Message)
+}
+
+// ── recommended version ──────────────────────────────────────────────────────
+
+func TestCheckTool_Recommended_BelowMinimum(t *testing.T) {
+	r, below := checkTool(t.Context(), "node", ">=22", ">=26.2.0", "nvm install",
+		opts([]string{"node"}, map[string]string{"node": "v21.0.0"}))
+	assert.False(t, r.Pass, "want fail: 21.0.0 < 22")
+	assert.False(t, below, "a failed minimum is not a recommended shortfall")
+	assert.Contains(t, r.Message, "need >=22")
+}
+
+func TestCheckTool_Recommended_BetweenMinimumAndRecommended(t *testing.T) {
+	r, below := checkTool(t.Context(), "node", ">=22", ">=26.2.0", "nvm install",
+		opts([]string{"node"}, map[string]string{"node": "v22.11.0"}))
+	assert.False(t, r.Pass, "want not-pass below recommended")
+	assert.True(t, below, "want belowRecommended")
+	assert.Equal(t, "node 22.11.0, recommended >=26.2.0 (minimum >=22 met) — nvm install", r.Message)
+}
+
+func TestCheckTool_Recommended_NoHint_NoRemediationSeparator(t *testing.T) {
+	r, below := checkTool(t.Context(), "node", ">=22", ">=26.2.0", "",
+		opts([]string{"node"}, map[string]string{"node": "v22.11.0"}))
+	assert.True(t, below)
+	assert.NotContains(t, r.Message, " — ", "board would read the text after ' — ' as a fix command")
+}
+
+func TestCheckTool_Recommended_Met(t *testing.T) {
+	r, below := checkTool(t.Context(), "node", ">=22", ">=26.2.0", "",
+		opts([]string{"node"}, map[string]string{"node": "v26.2.0"}))
+	assert.True(t, r.Pass, "want pass: %s", r.Message)
+	assert.False(t, below)
+	assert.Equal(t, "node 26.2.0 (>=22, recommended >=26.2.0)", r.Message)
+}
+
+func TestCheckTool_RecommendedOnly(t *testing.T) {
+	r, below := checkTool(t.Context(), "terraform", "", ">=1.9", "",
+		opts([]string{"terraform"}, map[string]string{"terraform": "Terraform v1.8.5"}))
+	assert.False(t, r.Pass)
+	assert.True(t, below)
+	assert.Equal(t, "terraform 1.8.5, recommended >=1.9", r.Message)
+
+	r, below = checkTool(t.Context(), "terraform", "", ">=1.9", "",
+		opts([]string{"terraform"}, map[string]string{"terraform": "Terraform v1.9.0"}))
+	assert.True(t, r.Pass)
+	assert.False(t, below)
+	assert.Equal(t, "terraform 1.9.0 (recommended >=1.9)", r.Message)
+}
+
+func TestCheckTool_RecommendedOnly_Missing_IsNotBelowRecommended(t *testing.T) {
+	r, below := checkTool(t.Context(), "terraform", "", ">=1.9", "",
+		opts(nil, nil))
+	assert.False(t, r.Pass)
+	assert.False(t, below, "a missing tool keeps the check's severity")
+}
+
+func TestCheckTool_RecommendedOnly_UnparseableVersion_IsBelowRecommended(t *testing.T) {
+	_, below := checkTool(t.Context(), "mytool", "", ">=1.0", "",
+		opts([]string{"mytool"}, map[string]string{"mytool": "no version info here"}))
+	assert.True(t, below, "nothing required is unmet, so an unreadable version is only a warning")
+
+	_, below = checkTool(t.Context(), "mytool", ">=1.0", ">=2.0", "",
+		opts([]string{"mytool"}, map[string]string{"mytool": "no version info here"}))
+	assert.False(t, below, "with a minimum, an unreadable version stays at the check's severity")
+}
+
+func TestCheckTool_Recommended_InvalidConstraint(t *testing.T) {
+	r, below := checkTool(t.Context(), "node", ">=22", "not a range", "",
+		opts([]string{"node"}, map[string]string{"node": "v26.2.0"}))
+	assert.False(t, r.Pass)
+	assert.False(t, below)
+	assert.Contains(t, r.Message, "invalid constraint")
+}
+
+func TestRunner_Recommended_Severity(t *testing.T) {
+	node := func(severity string) config.Check {
+		return config.Check{
+			Type: config.TypeTool, Value: "node", Severity: severity,
+			Constraint: ">=22", RecommendedConstraint: ">=26.2.0",
+		}
+	}
+	tests := []struct {
+		name     string
+		severity string
+		version  string
+		wantPass bool
+		wantSev  Severity
+	}{
+		{"below minimum keeps error", "", "v21.0.0", false, SeverityError},
+		{"below recommended is warn", "", "v22.11.0", false, SeverityWarn},
+		{"below recommended on warn check stays warn", "warn", "v22.11.0", false, SeverityWarn},
+		{"below recommended on info check stays info", "info", "v22.11.0", false, SeverityInfo},
+		{"meets recommended passes", "", "v26.2.0", true, SeverityError},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := NewRunnerWith(opts([]string{"node"}, map[string]string{"node": tc.version}))
+			results := runner.Run(config.Profile{node(tc.severity)})
+			require.Len(t, results, 1)
+			assert.Equal(t, tc.wantPass, results[0].Pass, results[0].Message)
+			assert.Equal(t, tc.wantSev, results[0].Severity)
+		})
+	}
+}
+
+func TestRunner_Recommended_PassLabel(t *testing.T) {
+	runner := NewRunnerWith(opts([]string{"node"}, map[string]string{"node": "v26.2.0"}))
+	results := runner.Run(config.Profile{{
+		Type: config.TypeTool, Value: "node", RecommendedConstraint: ">=26.2.0",
+	}})
+	require.Len(t, results, 1)
+	assert.Equal(t, "node 26.2.0 (recommended >=26.2.0)", results[0].Label)
 }
 
 // ── runner integration ────────────────────────────────────────────────────────

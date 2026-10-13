@@ -136,10 +136,27 @@ npm-style semver range, quoted in YAML
 Read pin from a file
 .Pq e.g.\& Pa .go-version .
 .El
+.Pp
+Optional recommended constraint (pick one).
+A tool that meets the minimum but not the recommended range is reported as a
+warning
+.Pq an Sy info No check stays Sy info ;
+.Fl \-strict
+promotes it to an error.
+.Bl -tag -width recommended_from -compact
+.It Sy recommended
+npm-style semver range, quoted in YAML.
+.It Sy recommended_from
+Read the recommended pin from a file
+.Pq e.g.\& Pa .nvmrc .
+.El
 .Bd -literal -offset indent
 - tool: go
   version_from: .go-version
   hint: https://go.dev/dl
+- tool: node
+  version: ">=22"
+  recommended_from: .nvmrc
 .Ed
 .Ss env
 Environment variable presence or absence.

@@ -147,6 +147,14 @@
           "description": "Pin file to read the version constraint from (.go-version, .nvmrc, .terraform-version, …). A bare version becomes \">=x\".",
           "type": "string"
         },
+        "recommended": {
+          "description": "npm-style semver range the tool should meet. A tool that meets version but not recommended is reported as a warning (an info check stays info). Quote in YAML.",
+          "type": "string"
+        },
+        "recommended_from": {
+          "description": "Pin file to read the recommended constraint from (.nvmrc, .go-version, …). A bare version becomes \">=x\".",
+          "type": "string"
+        },
         "unset": {
           "description": "For env: assert the variable is NOT set. Mutually exclusive with matches.",
           "type": "boolean"

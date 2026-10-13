@@ -30,7 +30,8 @@ triage (profile: default)
 ## Why triage?
 
 - **One binary, not a script.** No per-repo shell to copy, fork, and drift.
-- **Declarative checks.** Tools, versions, env vars, files, "one of these",
+- **Declarative checks.** Tools, versions (a hard minimum plus an optional
+  recommended target that warns), env vars, files, "one of these",
   platform-guarded commands, and auth/session probes — all in `triage.yaml`,
   no bespoke bash.
 - **Graded severity.** `error` / `warn` / `info` in output; exit `0`/`1` by

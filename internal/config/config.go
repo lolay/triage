@@ -51,7 +51,9 @@ const (
 //     Dir, Label (required on command; identity key for command/one_of), Serial
 //     (run as a barrier under the global serial lock, §7.2).
 //   - tool: Version (range as written), VersionFrom (pin-file path), Constraint
-//     (resolved npm-style constraint from Version or VersionFrom).
+//     (resolved npm-style constraint from Version or VersionFrom); Recommended,
+//     RecommendedFrom, RecommendedConstraint are the same trio for the soft
+//     target, where falling short is reported as a warning.
 //   - group/one_of: Items (nested children), OneOf (alternatives; bare tool
 //     names are normalized to {tool: <name>}).
 //   - env: Unset, Matches. command: Contains, Exit, Interp, WithEnv (per-command
@@ -59,28 +61,31 @@ const (
 //     path; defaults to the discovered config under Dir).
 //   - source: the file that declared the check (for collision diagnostics).
 type Check struct {
-	Required    *bool
-	WithEnv     map[string]string
-	Exit        *int
-	Label       string
-	Version     string
-	Type        string
-	Hint        string
-	Dir         string
-	Severity    string
-	source      string
-	VersionFrom string
-	Constraint  string
-	Config      string
-	Value       string
-	Interp      string
-	Matches     string
-	Contains    string
-	Platform    []string
-	OneOf       []Check
-	Items       []Check
-	Unset       bool
-	Serial      bool
+	Required              *bool
+	WithEnv               map[string]string
+	Exit                  *int
+	Label                 string
+	Version               string
+	Type                  string
+	Hint                  string
+	Dir                   string
+	Severity              string
+	source                string
+	VersionFrom           string
+	Constraint            string
+	Recommended           string
+	RecommendedFrom       string
+	RecommendedConstraint string
+	Config                string
+	Value                 string
+	Interp                string
+	Matches               string
+	Contains              string
+	Platform              []string
+	OneOf                 []Check
+	Items                 []Check
+	Unset                 bool
+	Serial                bool
 }
 
 // identity returns the collision key for a check within a profile: the type key
@@ -109,30 +114,32 @@ func (c Check) identity() string {
 // let UnmarshalYAML detect which keys were present; the rest are plain scalars.
 // Fields are ordered for struct alignment, not by topic.
 type checkFields struct {
-	Required    *bool             `yaml:"required"`
-	Env         *string           `yaml:"env"`
-	Path        *string           `yaml:"path"`
-	WithEnv     map[string]string `yaml:"with_env"`
-	Command     *string           `yaml:"command"`
-	Delegate    *string           `yaml:"delegate"`
-	Group       *string           `yaml:"group"`
-	Exit        *int              `yaml:"exit"`
-	Tool        *string           `yaml:"tool"`
-	Dir         string            `yaml:"dir"`
-	VersionFrom string            `yaml:"version_from"`
-	Hint        string            `yaml:"hint"`
-	Severity    string            `yaml:"severity"`
-	Label       string            `yaml:"label"`
-	Config      string            `yaml:"config"`
-	Version     string            `yaml:"version"`
-	Interp      string            `yaml:"interp"`
-	Contains    string            `yaml:"contains"`
-	Matches     string            `yaml:"matches"`
-	Items       []Check           `yaml:"items"`
-	Platform    stringList        `yaml:"platform"`
-	OneOf       []oneOfElem       `yaml:"one_of"`
-	Unset       bool              `yaml:"unset"`
-	Serial      bool              `yaml:"serial"`
+	Required        *bool             `yaml:"required"`
+	Env             *string           `yaml:"env"`
+	Path            *string           `yaml:"path"`
+	WithEnv         map[string]string `yaml:"with_env"`
+	Command         *string           `yaml:"command"`
+	Delegate        *string           `yaml:"delegate"`
+	Group           *string           `yaml:"group"`
+	Exit            *int              `yaml:"exit"`
+	Tool            *string           `yaml:"tool"`
+	Dir             string            `yaml:"dir"`
+	VersionFrom     string            `yaml:"version_from"`
+	Recommended     string            `yaml:"recommended"`
+	RecommendedFrom string            `yaml:"recommended_from"`
+	Hint            string            `yaml:"hint"`
+	Severity        string            `yaml:"severity"`
+	Label           string            `yaml:"label"`
+	Config          string            `yaml:"config"`
+	Version         string            `yaml:"version"`
+	Interp          string            `yaml:"interp"`
+	Contains        string            `yaml:"contains"`
+	Matches         string            `yaml:"matches"`
+	Items           []Check           `yaml:"items"`
+	Platform        stringList        `yaml:"platform"`
+	OneOf           []oneOfElem       `yaml:"one_of"`
+	Unset           bool              `yaml:"unset"`
+	Serial          bool              `yaml:"serial"`
 }
 
 // UnmarshalYAML resolves the single reserved type key for a check, erroring on
@@ -199,6 +206,8 @@ func (c *Check) UnmarshalYAML(unmarshal func(any) error) error {
 	c.Serial = f.Serial
 	c.Version = f.Version
 	c.VersionFrom = f.VersionFrom
+	c.Recommended = f.Recommended
+	c.RecommendedFrom = f.RecommendedFrom
 	c.Unset = f.Unset
 	c.Matches = f.Matches
 	c.Contains = f.Contains

@@ -149,7 +149,7 @@ a failure is treated*.
 
 | Type | Checks |
 | --- | --- |
-| `tool` | Command present; optional `version` or `version_from` |
+| `tool` | Command present; optional `version` / `version_from` minimum and `recommended` / `recommended_from` target |
 | `env` | Env var set or unset; optional `matches` regex |
 | `path` | File/dir exists (glob ok) |
 | `one_of` | At least one of N alternatives present |
@@ -174,6 +174,43 @@ Version fields (pick **one**; loader warns if both):
   `"~1.2.0"`, `"1.x"`, …).
 - **`version_from`** — read a pin file (`.go-version`, `.nvmrc`, `.tool-versions`,
   …). Bare version → `>=` that version; existing range used as-is.
+
+Recommended fields (optional; pick **one**; loader warns if both):
+
+- **`recommended`** — npm-style range the tool *should* meet.
+- **`recommended_from`** — same pin-file rules as `version_from`.
+
+Use them when a project has a floor it still supports and a newer version it
+builds and tests with: `version` is the minimum, `recommended` the target.
+
+```yaml
+- tool: node
+  version: ">=22"            # minimum: below this, the check's severity
+  recommended_from: .nvmrc   # 26.2.0 → ">=26.2.0": below this, a warning
+  hint: nvm install
+```
+
+| Installed | Result |
+| --- | --- |
+| missing | check's severity |
+| fails `version` | check's severity |
+| meets `version`, fails `recommended` | `warn` (`info` check stays `info`) |
+| meets both | pass |
+
+One probe, one board line:
+
+```
+[!] node — node 22.11.0, recommended >=26.2.0 (minimum >=22 met) — nvm install
+[✓] node 26.2.0 (>=22, recommended >=26.2.0)
+```
+
+`recommended` without `version` is allowed (presence is required, the version
+is advisory); an unparseable version is then a warning too. `--strict` promotes
+the warning to an error like any other. `version_from` alone keeps its meaning:
+the pin is the minimum.
+
+Older triage releases ignore `recommended` / `recommended_from` and run the
+`version` check alone, so a config can adopt them before every machine upgrades.
 
 ### `env`
 

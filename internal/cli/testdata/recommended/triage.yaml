@@ -1,0 +1,12 @@
+default:
+  - group: Toolchain
+    items:
+      # Meets the minimum, below the recommended pin: warn, exit 0.
+      - tool: fake-node
+        version: ">=22"
+        recommended_from: .nvmrc
+        hint: nvm install
+      # Meets both.
+      - tool: fake-go
+        version: ">=1.26"
+        recommended: ">=1.27.1"

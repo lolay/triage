@@ -1,0 +1,9 @@
+triage (profile: default)
+
+[!] Toolchain
+    [!] fake-node — fake-node 22.11.0, recommended >=26.2.0 (minimum >=22 met) — nvm install
+    [✓] fake-go 1.27.1 (>=1.26, recommended >=1.27.1)
+
+! 1 warning, 1 ok — see [!] items above
+To fix, run:
+    nvm install

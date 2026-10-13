@@ -30,8 +30,8 @@ var reservedBuiltinVars = map[string]bool{
 // Pipeline (spec §4): parse → process include: files in order (merging profiles,
 // flagging collisions, cycle/diamond-safe) → resolve each profile's extends/add
 // chain → produce a Config whose Profiles are flat, ordered check lists. Pin
-// files referenced by version_from are read relative to the declaring file and
-// resolved into npm-style constraints. Non-fatal issues accumulate in Warnings.
+// files referenced by version_from and recommended_from are read relative to
+// the declaring file and resolved into npm-style constraints. Non-fatal issues accumulate in Warnings.
 func load(path string) (*Config, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -342,6 +342,9 @@ func (l *loader) postProcessCheck(c *Check, dir, file string) {
 	if c.Version != "" && c.VersionFrom != "" {
 		l.warnf("%s: tool %q: both 'version' and 'version_from' set; using 'version'", file, c.Value)
 	}
+	if c.Recommended != "" && c.RecommendedFrom != "" {
+		l.warnf("%s: tool %q: both 'recommended' and 'recommended_from' set; using 'recommended'", file, c.Value)
+	}
 	if c.Unset && c.Matches != "" {
 		l.warnf("%s: env %q: 'unset: true' with 'matches' is contradictory; 'matches' ignored", file, c.Value)
 	}
@@ -358,6 +361,18 @@ func (l *loader) postProcessCheck(c *Check, dir, file string) {
 			l.warnf("%s: tool %q: cannot read version_from %q: %v", file, c.Value, c.VersionFrom, err)
 		} else {
 			c.Constraint = constraint
+		}
+	}
+
+	switch {
+	case c.Recommended != "":
+		c.RecommendedConstraint = strings.TrimSpace(c.Recommended)
+	case c.RecommendedFrom != "":
+		constraint, err := readVersionFrom(dir, c.RecommendedFrom)
+		if err != nil {
+			l.warnf("%s: tool %q: cannot read recommended_from %q: %v", file, c.Value, c.RecommendedFrom, err)
+		} else {
+			c.RecommendedConstraint = constraint
 		}
 	}
 
