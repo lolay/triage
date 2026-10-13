@@ -76,10 +76,11 @@ and action `v0.3.1` on `lolay/triage-action` in the same release beat). Document
 the pairing in both READMEs.
 
 **Default CLI pin:** the committed **`VERSION` file** at the action root (bumped
-by the release workflow at tag time) pins the CLI version — so floating tags
-resolve deterministically and tokenlessly (download `triage_<ver>_…` from
-`lolay/triage` releases). Optional input **`version`** overrides it. See
-[`action.md`](action.md) §4 for the full resolution order.
+by Renovate; the release workflow tags the commit that carries it, never after)
+pins the CLI version — so floating tags resolve deterministically and
+tokenlessly (download `triage_<ver>_…` from `lolay/triage` releases). Optional
+input **`version`** overrides it. See [`action.md`](action.md) §4 for the full
+resolution order.
 
 **Floating tags** on **`lolay/triage-action`** (GitHub does not semver-resolve):
 
