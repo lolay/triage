@@ -15,9 +15,16 @@ Verified: `go test -race` on every package, golangci-lint v2.14.0 clean, end-to-
 (21 → `[✗]` exit 1, 22 → `[!]` exit 0, 26.2 → `[✓]`; `--strict` and `--severity` exit 1 on the warning;
 `--json` is an ordinary `warn` result). 0.4.1 loads the new keys and enforces the minimum only.
 
+## Done (m2, public, pushed)
+
+- `e814822` Add toolchain floor and pin standard: new "Toolchain Floor and Pin" section in
+  `standards/architecture.md`, `doctor` row in `makefile.md` points at it, `core.md` / `SKILL.md` index
+  mention it (Cursor rule regenerated), `personal-new-project` step 6 records floor and pin separately.
+  `make -C agents validate test` passes (only the existing "no plugin version" warnings).
+
 ## Pending
 
-- Waiting on approval to start m2 (standards in `public`), then m3 (nowline) after a triage release.
+- m3 (nowline) waits on approval and, ideally, a triage release with `recommended_from`.
 - Release of triage is maintainer-only; not started.
 - Remove `specs/handoffs/*-lantern.md` before the triage PR merges.
 

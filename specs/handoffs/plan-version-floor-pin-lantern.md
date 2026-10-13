@@ -1,6 +1,6 @@
 # Minimum vs. recommended versions: triage, standards, nowline
 
-Status: m1 done and pushed on `claude/hopeful-dijkstra-5rz2m9` (triage). m2 (standards) next, waiting on approval.
+Status: m1 done (triage), m2 done (public `e814822`), both pushed. m3 (nowline) next, after a triage release; waiting on approval.
 
 ## Context
 
@@ -162,7 +162,7 @@ Both directions hold, and the design is chosen for it:
 
 Release (tag + tap bump) waits for your go-ahead, per standards.
 
-## m2 - standards (`GaryRudolph/public`, same branch)
+## ~~m2 - standards~~ (done) (`GaryRudolph/public`, same branch)
 
 - `standards/architecture.md` (real file under
   `plugins/personal/skills/personal-standards/standards/`): new short
