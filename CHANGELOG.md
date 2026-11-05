@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Go toolchain pin (`.go-version`) bumped from 1.27.2 to 1.27.3. The `go.mod`
+  floor stays at 1.26. `make doctor` now recommends 1.27.3.
+
 ### Fixed
 - `specs/action.md` (§4, §6), `specs/milestones.md` and `specs/releasing.md`
   no longer say the `lolay/triage-action` release workflow writes `VERSION` at
