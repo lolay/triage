@@ -51,7 +51,7 @@ MODE ?= default
 GOLANGCI_LINT_VERSION ?= v2.14.0
 ACTIONLINT_VERSION ?= 1.7.12
 GORELEASER_VERSION ?= v2.18.2
-GH_AW_VERSION ?= v0.74.8
+GH_AW_VERSION ?= v0.93.5
 
 # Where install-tools puts binaries (must be on PATH).
 TOOLS_BIN ?= $(shell go env GOPATH)/bin
