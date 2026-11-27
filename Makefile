@@ -48,9 +48,9 @@ MODE ?= default
 # and actionlint via `make install-tools` and reads the goreleaser pin via
 # `make print-GORELEASER_VERSION`; Renovate bumps both lines (custom managers in
 # .github/renovate-shared.json). Keep the `NAME ?= vX.Y.Z` shape intact.
-GOLANGCI_LINT_VERSION ?= v2.14.0
+GOLANGCI_LINT_VERSION ?= v2.15.0
 ACTIONLINT_VERSION ?= 1.7.12
-GORELEASER_VERSION ?= v2.18.2
+GORELEASER_VERSION ?= v2.20.2
 GH_AW_VERSION ?= v0.74.8
 
 # Where install-tools puts binaries (must be on PATH).
