@@ -7,4 +7,4 @@
 internal/cli/testdata/**/*.golden text eol=lf
 internal/cli/testdata/**/*.txt    text eol=lf
 
-.github/workflows/*.lock.yml linguist-generated=true merge=ours
+.github/workflows/*.lock.yml linguist-generated=true
