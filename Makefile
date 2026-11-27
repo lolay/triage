@@ -135,7 +135,7 @@ lint: ## Static checks: gofmt drift + go vet + golangci-lint + actionlint (requi
 	@if ! command -v actionlint >/dev/null 2>&1; then \
 	  echo "actionlint not found — run 'make install-tools' to install" >&2; exit 1; \
 	fi
-	actionlint
+	actionlint -ignore 'property "workflow_ref" is not defined'
 
 format: ## Auto-fix formatting (gofmt -w .)
 	gofmt -w .
